@@ -1,0 +1,211 @@
+#!/bin/sh
+
+PROJECT="`basename \`find . -name *.xcodeproj -depth 1\` .xcodeproj`"
+SDK=macosx10.5
+NEWVERSION=$1
+FORCE=$2
+
+DEPLOYMENT_SERVER=tcurdt@vafer.org
+DEPLOYMENT_DIR=/var/www/vafer.org/www/projects
+DEPLOYMENT_URL=http://vafer.org/projects
+COPYRIGHT="Copyright 2011 Torsten Curdt"
+
+###########################################
+
+set -e
+
+OLDVERSION="`git tag -l|grep '^[0-9]'|sort -n|tail -1`"
+
+if [ $# == 0 ]; then
+    echo "Current version of $PROJECT is: $OLDVERSION"
+    exit 1
+fi
+
+if [ "`git status | grep 'working directory clean'`" = "" ]; then
+    echo "There are local modifications. Please commit everything for a release."
+    exit 2
+fi
+
+if [ "$OLDVERSION" = "$NEWVERSION" ]; then
+    if [ "$FORCE" != "force" ]; then
+        echo "Re-releasing '$NEWVERSION' requires a force."
+        exit 3
+    else
+        echo "Re-releasing '$NEWVERSION'..."
+        git tag -d $OLDVERSION
+    fi
+else
+    echo "Releasing '$NEWVERSION'..."
+fi
+
+echo "Creating tag '$NEWVERSION'..."
+git tag -a "$NEWVERSION" -m "release $NEWVERSION"
+
+echo "Cleaning build..."
+
+rm -rf build 2>/dev/null || true
+mkdir -p build
+
+echo "Exporting from tag..."
+git archive --format=tar --prefix=$NEWVERSION/ $NEWVERSION | (cd build && tar xf -)
+
+cd build/$NEWVERSION
+REVISION=`git show --pretty=short | grep "^commit" | sed -n 's#commit \([0-9a-fA-F]*\).*#\1#p'`
+
+if [ "$REVISION" = "" ]; then
+    echo "Could not detect revision."
+    exit 4
+fi
+
+echo "Building '$PROJECT' version $NEWVERSION ($REVISION)..."
+xcodebuild \
+  -configuration Release \
+  -sdk $SDK \
+  2>&1 > ../xcodebuild.log
+
+if [ $? != 0 ]; then
+    echo "Build failed. Removing tag."
+    git tag -d $NEWVERSION
+    exit 5
+fi
+
+echo "Build successful."
+
+if [ -d "build/Release/$PROJECT.app" ]; then
+
+    echo "Updating Info plist..."
+    if [ ! -f "build/Release/$PROJECT.app/Contents/Info.plist" ]; then
+        echo "Failed to find Info plist. Maybe your basedir does not reflect the name in the build settings?"
+        exit 6
+    fi
+
+    python <<SCRIPT
+# coding=utf-8
+import os
+from Foundation import NSMutableDictionary
+filename = "build/Release/$PROJECT.app/Contents/Info.plist"
+plist = NSMutableDictionary.dictionaryWithContentsOfFile_(filename)
+plist['CFBundleVersion'] = "$NEWVERSION"
+plist['CFBundleShortVersionString'] = "$NEWVERSION"
+plist['CFBundleLongVersionString'] = "$NEWVERSION ($REVISION)"
+plist['CFBundleGetInfoString'] = "$NEWVERSION, $COPYRIGHT"
+plist.writeToFile_atomically_(filename, 1)
+SCRIPT
+
+fi
+
+ZIP=${PROJECT}_${NEWVERSION}.zip
+echo "Building distribution $ZIP..."
+
+#FIXME generate release notes from issue tracking
+
+if [ -f DIST.txt ]; then
+
+    FILES=`cat DIST.txt`
+    for f in $FILES; do
+        echo "Copying $f into distribution..."
+
+        tar cf - "$f" | ( cd build/Release; tar xfp -)
+    done
+else
+    echo "WARNING: not DIST.txt file found"
+
+    FILES='RELEASENOTES.html'
+    touch build/Release/RELEASENOTES.html
+fi
+
+# FIXME also suport for DMGs
+
+cd build/Release
+zip -qyr $ZIP *.app *.framework $FILES
+
+if [ -f '../../../../dsa_priv.pem' ]; then
+    echo "Signing the release"
+    sparkle-sign $ZIP ../../../../dsa_priv.pem > $ZIP.dsa
+    echo "Signature: `cat $ZIP.dsa`"
+fi
+
+echo "Please test the distribution..."
+
+cat $ZIP > ~/Desktop/Test-${PROJECT}_${NEWVERSION}.zip
+
+echo "All OK?"
+
+read a
+if [[ $a != "Y" && $a != "y" && $a != "yes" ]]; then
+    echo "Aborting release!"
+    exit 7
+fi
+
+PROJECT_DIR=`echo $PROJECT | tr "[:upper:]" "[:lower:]"`
+
+echo "Setting up remote dirs..."
+ssh $DEPLOYMENT_SERVER "mkdir -p $DEPLOYMENT_DIR/$PROJECT_DIR/versions/$NEWVERSION"
+
+if [ -f $ZIP.dsa ]; then
+    echo "Deploying signed distribution..."
+    scp -q $ZIP $ZIP.dsa RELEASENOTES.html $DEPLOYMENT_SERVER:$DEPLOYMENT_DIR/$PROJECT_DIR/versions/$NEWVERSION/
+else
+    echo "Deploying distribution..."
+    scp -q $ZIP RELEASENOTES.html $DEPLOYMENT_SERVER:$DEPLOYMENT_DIR/$PROJECT_DIR/versions/$NEWVERSION/
+fi
+
+echo "Preparing appcast..."
+ssh $DEPLOYMENT_SERVER "~/bin/appcast xml $PROJECT > $DEPLOYMENT_DIR/$PROJECT_DIR/appcast.xml.new"
+
+echo "Preparing website..."
+ssh $DEPLOYMENT_SERVER "~/bin/appcast php $PROJECT > $DEPLOYMENT_DIR/$PROJECT_DIR/appcast.php.new"
+
+echo "Done. '$PROJECT' version $NEWVERSION ($REVISION) successfully staged."
+
+# echo "Downloading..."
+# curl -s $DEPLOYMENT_URL/$PROJECT_DIR/versions/$NEWVERSION/$ZIP > ~/Desktop/$ZIP 
+
+cd ../../../..
+
+echo "Verifying..."
+
+sparkle-verify $DEPLOYMENT_URL/$PROJECT_DIR/appcast.xml.new
+
+echo "Please test the new appcast: $DEPLOYMENT_URL/$PROJECT_DIR/appcast.xml.new"
+
+echo "Go Live?"
+
+read a
+if [[ $a != "Y" && $a != "y" && $a != "yes" ]]; then
+    echo "Aborting release!"
+    exit 8
+fi
+
+echo "Updating appcast..."
+ssh $DEPLOYMENT_SERVER "cp $DEPLOYMENT_DIR/$PROJECT_DIR/appcast.xml $DEPLOYMENT_DIR/$PROJECT_DIR/appcast.xml.bak ; mv $DEPLOYMENT_DIR/$PROJECT_DIR/appcast.xml.new $DEPLOYMENT_DIR/$PROJECT_DIR/appcast.xml"
+
+echo "Updating website..."
+ssh $DEPLOYMENT_SERVER "cp $DEPLOYMENT_DIR/$PROJECT_DIR/appcast.php $DEPLOYMENT_DIR/$PROJECT_DIR/appcast.php.bak ; mv $DEPLOYMENT_DIR/$PROJECT_DIR/appcast.php.new $DEPLOYMENT_DIR/$PROJECT_DIR/appcast.php"
+
+
+echo "Done.'$PROJECT' version $NEWVERSION ($REVISION) successfully released!"
+
+exit 0
+
+#git commit -a appcast.xml -m "added new release $NEWVERSION"
+
+#if [ "`git tag -l | grep "$NEWVERSION"`" != "" ]; then
+#    echo "There already is a tag $NEWVERSION"
+
+#OLDVERSION_APPCAST="`cat appcast.xml|sed -n 's#.*url=.*/versions/\([^/]*\)/.*#\1#p'|sort -n|head -1`"
+#if [ "$OLDVERSION_GIT" != "$OLDVERSION_APPCAST" ]; then
+#    echo "Appcast and tags out of sync:"
+#    echo " git:     $OLDVERSION_GIT"
+#    echo " appcast: $OLDVERSION_APPCAST"
+#    echo "Please fix manually first."
+#    exit 3
+#fi
+
+#INFO=build/Release/$PROJECT.app/Contents/Info.plist
+#sed -i.old -e "/CFBundleVersion/,/string/{s/\(string>\).*\(<\/string\)/\1${NEWVERSION}\2/;}" $INFO
+#if [ "`grep \"$NEWVERSION\" $INFO`" == "" ]; then
+#    echo "Failed to update Info plist."
+#    exit 6
+#fi
+

@@ -1,0 +1,129 @@
+#!/bin/sh
+#
+# requires:
+#  brew install xmlstarlet
+#  brew install gnupg
+#  brew install gpg-agent
+#  get a version of pinentry-mac from https://github.com/GPGTools/pinentry-mac
+
+set -e
+
+DIR=".release"
+
+rm -rf $DIR
+
+if [ "`git status | grep 'working directory clean'`" = "" ]; then
+    echo "There are local modifications. Please commit everything for a release."
+    exit 1
+fi
+
+NAME=`xml sel -N mvn=http://maven.apache.org/POM/4.0.0 -t -v "/mvn:project/mvn:name" pom.xml`
+ARTIFACT=`xml sel -N mvn=http://maven.apache.org/POM/4.0.0 -t -v "/mvn:project/mvn:artifactId" pom.xml`
+GROUP=`xml sel -N mvn=http://maven.apache.org/POM/4.0.0 -t -v "/mvn:project/mvn:groupId" pom.xml`
+VERSION=`xml sel -N mvn=http://maven.apache.org/POM/4.0.0 -t -v "/mvn:project/mvn:version" pom.xml`
+
+if [ "$VERSION" != "${VERSION/SNAPSHOT/}" ]; then
+    echo "Still a SNAPSHOT version. Please adjust the version."
+    exit 2
+fi
+
+echo "Setting tag '$NAME-$VERSION'..."
+git tag -f -a "$NAME-$VERSION" -m "release $VERSION"
+
+echo "Cleaning build..."
+
+rm -rf $DIR 2>/dev/null || true
+mkdir -p $DIR
+
+echo "Exporting from tag..."
+git archive --format=tar --prefix=$VERSION/ "$NAME-$VERSION" | (cd $DIR && tar xf -)
+
+cd $DIR/$VERSION
+REVISION=`git show --pretty=short | grep "^commit" | sed -n 's#commit \([0-9a-fA-F]*\).*#\1#p'`
+
+if [ "$REVISION" = "" ]; then
+    echo "Could not detect revision."
+    exit 3
+fi
+
+echo "Building $NAME $VERSION ($REVISION)... this might take a while"
+
+set +e
+
+mvn clean install site source:jar javadoc:jar 2>&1 > output.log
+
+if [[ $? -ne 0 ]]; then
+    echo "FAILED. Please check the log at '`pwd`/output.log'."
+    exit 4
+fi
+
+set -e
+
+echo "Building done."
+
+echo "Starting GPG agent."
+killall gpg-agent
+eval "$(gpg-agent --daemon --use-standard-socket)"
+
+echo "Building bundle..."
+
+cd target
+
+cp ../pom.xml .
+
+SIGN="pom.xml $NAME-$VERSION.jar $NAME-$VERSION-sources.jar $NAME-$VERSION-javadoc.jar"
+SIGNATURES=""
+for A in $SIGN ; do
+    echo "Signing $A"
+    rm $A.asc 2>/dev/null || true
+    gpg --armor --output $A.asc --detach-sig $A
+    # openssl md5 < $A.asc > $A.asc.md5
+    # openssl sha1 < $A.asc > $A.asc.sha1
+    SIGNATURES="$SIGNATURES $A.asc"
+done
+
+rm $NAME-$VERSION-bundle.jar 2>/dev/null || true
+jar -cf $NAME-$VERSION-bundle.jar $SIGN $SIGNATURES
+  
+echo "Uploading $NAME-$VERSION-bundle.jar to oss.sonatype.org..."
+
+ACCOUNT=`security find-internet-password -s oss.sonatype.org -g 2>&1 | grep acct | sed 's/.*=\"\(.*\)\"/\1/'`
+PASSWORD=`security find-internet-password -s oss.sonatype.org -g 2>&1 | grep password | sed 's/password: \"\(.*\)\"/\1/'`
+
+REPO=`curl --basic -u "$ACCOUNT:$PASSWORD" -F "file=@$NAME-$VERSION-bundle.jar" "https://oss.sonatype.org/service/local/staging/bundle_upload" 2>&1`
+echo "Repository: $REPO"
+
+echo "Opening Nexus console..."
+open "https://oss.sonatype.org/index.html#staging"
+
+git push --tags
+
+cd ../../..
+
+if [ "`git branch -a | grep gh-pages`" != "" ]; then
+
+    echo "Adding xref and apidocs to site..."
+
+    git co gh-pages
+
+    rm -rf release/$VERSION 2>/dev/null || true
+    mkdir -p release/$VERSION
+
+    mv $DIR/$VERSION/target/site/xref release/$VERSION/xref
+    mv $DIR/$VERSION/target/site/apidocs release/$VERSION/apidocs
+
+    echo "Commit site? (y/N)"
+
+    read a
+    if [[ $a == "Y" || $a == "y" || $a == "yes" ]]; then
+        git add release 2>&1 > /dev/null
+        git commit -e -m "added docs for $VERSION"
+
+        echo "Pushing site"
+        git push --all
+
+        git co master
+    else
+        echo "Not committed."
+    fi
+fi

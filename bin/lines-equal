@@ -1,0 +1,18 @@
+#!/bin/bash
+
+function uniqs()
+{
+  (
+  for FILE in "$@"; do
+    sort $FILE | openssl sha1
+  done
+  ) | sort | uniq | wc -l
+}
+
+if [ `uniqs $*` == '1' ]; then
+  echo YES
+  exit 0
+else
+  echo NO
+  exit 1
+fi

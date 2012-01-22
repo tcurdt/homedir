@@ -1,0 +1,436 @@
+#!/usr/bin/env ruby
+require 'csv'
+require 'sqlite3'
+require 'digest'
+require 'iconv'
+
+$paths = {
+  'db' => 'Buchungen %.4d %.2d.db',
+  'csv' => 'Buchungen %.4d %.2d.csv'
+}
+def path(mapping)
+  mapping.each do |k,v|
+    $paths[k] = v
+  end
+end
+
+$matches = {
+}
+def match(mapping)
+  mapping.each do |k,v|
+    $matches[k] = v
+  end
+end
+
+$categories = {
+}
+def category(mapping)
+  mapping.each do |k,v|
+    $categories[k] = v
+  end
+end
+
+config_path = File.expand_path('~/.buchen')
+if File.exists?(config_path)
+  load config_path
+  puts "db: #{$paths['db']}"
+  puts "csv: #{$paths['csv']}"
+  puts "matches: #{$matches.count}"
+end
+
+if ARGV.count == 0
+  puts "buchen ..."
+  exit
+end
+
+class Database
+  attr_reader :db
+  def initialize(name)
+    sql = nil
+    if !File.exists?(name)
+      puts "creating db #{name}"
+      sql = <<SQL
+      CREATE TABLE IF NOT EXISTS categories (
+        category TEXT PRIMARY KEY,
+        account INTEGER
+      );
+      CREATE TABLE IF NOT EXISTS records (
+        uniq TEXT PRIMARY KEY,
+        source TEXT,
+        date DATETIME,
+        account TEXT,
+        text TEXT,
+        value REAL,
+        currency TEXT,
+        tax INTEGER,
+        category TEXT
+      );
+SQL
+
+      $categories.each do |category, nr|
+        sql << "INSERT INTO \"categories\" VALUES ('#{category}', #{nr});\n"
+      end
+    end
+
+    @db = SQLite3::Database.new(name)
+    @db.execute_batch(sql) if sql
+    @db.results_as_hash = true
+  end
+
+  def uniqs
+    uniqs = {}
+    @db.execute('SELECT uniq FROM records') do |row|
+      uniqs[row[0]] = 1
+    end
+    uniqs
+  end
+
+  def add_record(record)
+    uniq = [ :account, :date, :value, :text, :currency, :tax ].inject('') { |s,k| s << record[k].to_s.gsub(/ /, '') }
+    md5 = Digest::MD5.hexdigest(uniq)
+
+    @db.prepare('INSERT OR IGNORE INTO records (uniq,source,date,account,text,value,currency,tax,category) VALUES (?,?,?,?,?,?,?,?,?)') do |statement|
+      statement.execute(md5, record[:source], record[:date], record[:account], record[:text], record[:value], record[:currency] || 'EUR', record[:tax] || 0, nil) do |result|
+      end
+    end
+
+    md5
+  end
+
+  def update_category(uniq, category)
+    @db.prepare('UPDATE records SET category = ? WHERE uniq = ?') do |statement|
+      statement.execute(category, uniq) do |result|
+      end
+    end
+  end
+
+  def verify(starts)
+
+    sums = {}.merge(starts)
+    @db.execute('SELECT source, account, sum(value) FROM records GROUP BY source ORDER BY source') do |row|
+      account = row['account']
+      source = row['source']
+      value = row['sum(value)'].to_f
+      sums[account] = (sums[account] || 0).to_f + value
+      puts "%s = %1.2f (%1.2f)" % [ source, sums[account], value ]
+    end
+
+    missing = []
+    @db.execute('SELECT * FROM records WHERE category IS NULL') do |row|
+      missing << row
+    end
+    puts "#{missing.length} records missing a category"
+    missing
+  end
+
+  def export(filename)
+
+    categories = {}
+    @db.execute('SELECT * FROM categories') do |row|
+      categories[row['category']] = row['account']
+    end
+
+    index = {}
+
+    lines = 0
+    File.open(filename, 'w:iso-8859-1') do |csv|
+      @db.execute('SELECT * FROM records ORDER BY DATE') do |row|
+        date = DateTime.parse(row['date']).strftime('%d.%m.%Y')
+        value = row['value'].to_f
+        currency = row['currency']
+        text = Iconv.conv('ASCII//IGNORE', 'UTF8', row['text'])
+
+        if !categories[row['category']]
+          puts "Unknown category: #{row['category']}"
+          next
+        end
+
+        if !categories[row['account']]
+          puts "Unknown account: #{row['account']}"
+          next
+        end
+
+        if value < 0
+          soll = categories[row['category']]
+          haben = categories[row['account']]
+          value = -value
+        else
+          soll = categories[row['account']]
+          haben = categories[row['category']]
+        end
+
+        if currency != 'EUR'
+          value = Currency.convert(value, currency, 'EUR', date)
+          currency = 'EUR'
+        end
+        v = "%1.2f" % value
+        t = case row['tax'].to_f
+        when 0.19
+          (value > 0) ? 3 : 9
+        when 0.7
+          (value > 0) ? 8 : 2
+        when 0.0
+          0
+        else
+          raise "Tax: #{row['tax'].to_f}"
+        end.to_s
+        
+        account = row['account']
+        
+        i = index[account] || 0
+        i += 1
+        index[account] = i
+        csv.write "%s;%s;\"%s\";%d;\"%s\";%s;%d;%d;%s;\"%s\";\"%s\";\"%s\"\r\n" % [
+          date,
+          date,
+          account,
+          i,
+          text,
+          v.gsub(/\./, ','),
+          soll,
+          haben,
+          t.gsub(/\./, ','),
+          '',
+          '',
+          currency
+        ]
+        lines += 1
+      end
+    end
+    puts "Exported #{lines} lines"
+  end
+end
+
+class DkbGiro
+  def initialize(filename, reader)
+    @source = filename
+    @reader = reader
+  end
+  def convert
+    # skip header
+    6.times do
+      @reader.readline
+    end
+    @reader.each do |row|
+        # 0 "Buchungstag";
+        # 1 "Wertstellung";
+        # 2 "Buchungstext";
+        # 3 "Auftraggeber/Begünstigter";
+        # 4 "Verwendungszweck";
+        # 5 "Kontonummer";
+        # 6 "BLZ";
+        # 7 "Betrag (EUR)";
+        record = {
+          :date  => row[1],
+          :value => row[7].gsub(/\./,'').gsub(/,/,'.').to_f,
+          :text  => row[3].encode('utf-8') + ' ' + row[4].encode('utf-8'),
+          :account  => 'dkb_giro',
+          :partner  => row[3].encode('utf-8'),
+          :source => @source,
+        }
+        yield record
+    end
+  end
+end
+
+class DkbVisa
+  def initialize(filename, reader)
+    @source = filename
+    @reader = reader
+  end
+  def convert
+    # skip header
+    7.times do
+      @reader.readline
+    end
+    @reader.each do |row|
+        # 0 "Umsatz abgerechnet";
+        # 1 "Belegdatum";
+        # 2 "Belegdatum";
+        # 3 "Umsatzbeschreibung";
+        # 4 "Betrag (EUR)";
+        # 5 "Ursprünglicher Betrag";
+        record = {
+          :date  => row[2],
+          :value => row[4].gsub(/\./,'').gsub(/,/,'.').to_f,
+          :text  => row[3].encode('utf-8'),
+          :account  => 'dkb_visa',
+          :source => @source,
+        }
+        yield record
+    end
+  end
+end
+
+class Paypal
+  def initialize(filename)
+    @source = filename
+  end
+  def convert
+    remember = {}
+    CSV.open(@source, 'r:utf-8', :col_sep => ',') do |reader|
+      1.times do
+        reader.shift
+      end
+      reader.each do |row|
+        # 00 Date,
+        # 01 Time,
+        # 02 Time Zone,
+        # 03 Name,
+        # 04 Type,
+        # 05 Status,
+        # 06 Currency,
+        # 07 Gross,
+        # 08 Fee,
+        # 09 Net,
+        # 10 From Email Address,
+        # 11 To Email Address,
+        # 12 Transaction ID,
+        # 13 Counterparty Status,
+        # 14 Shipping Address,
+        # 15 Address Status,
+        # 16 Item Title,
+        # 17 Item ID,
+        # 18 Shipping and Handling Amount,
+        # 19 Insurance Amount,
+        # 20 Sales Tax,
+        # 21 Option 1 Name,
+        # 22 Option 1 Value,
+        # 23 Option 2 Name,
+        # 24 Option 2 Value,
+        # 25 Auction Site,
+        # 26 Buyer ID,
+        # 27 Item URL,
+        # 28 Closing Date,
+        # 29 Escrow Id,
+        # 30 Invoice Id,
+        # 31 Reference Txn ID,
+        # 32 Invoice Number,
+        # 33 Custom Number,
+        # 34 Quantity,
+        # 35 Receipt ID,
+        # 36 Balance,
+        # 37 Contact Phone Number,
+        if row[6] != 'EUR'
+          remember[row[12]] = row
+        else
+          if row[5] == 'Completed' && row[9] != '...'
+            if row[3] !~ /^Bank Account/ && trow = remember[row[31]]
+              trow[9] = row[9]
+              trow[6] = row[6]
+              row = trow
+            end
+            record = {
+              :date     => row[0],
+              :value    => row[9].gsub(/,/,'.').to_f,
+              :text     => row[3].encode('utf-8') + ' ' + row[16].encode('utf-8'),
+              :account  => 'paypal',
+              :currency => row[6].encode('utf-8'),
+              :partner  => row[3].encode('utf-8'),
+              :source   => @source
+            }
+            yield record
+          end
+        end
+      end
+    end
+  end
+end
+
+def records(filenames)
+  ARGV.each do |filename|
+    CSV.open(filename, 'r:iso-8859-1', :col_sep => ';') do |reader|
+      header = reader.readline
+      case header[0]
+      when /Kontonummer/
+        # sum = ?
+        DkbGiro.new(filename, reader).convert do |record|
+          # m = record[:date][3,2]
+          # if m != month
+          #   puts "#{filename}: #{month} = #{sum}"
+          #   month = m
+          # end
+          yield record
+          # sum -= record[:value]
+        end
+      when /Kreditkarte/
+        # sum = ?
+        DkbVisa.new(filename, reader).convert do |record|
+          # m = record[:date][3,2]
+          # if m != month
+          #   puts "#{filename}: #{month} = #{sum}"
+          #   month = m
+          # end
+          yield record
+          # sum -= record[:value]
+        end
+      when /Date, Time, Time Zone/
+        # sum = 0
+        Paypal.new(filename).convert do |record|
+          # m = record[:date][3,2]
+          # if m != month
+          #   puts "#{filename}: #{month} = #{sum}"
+          #   month = m
+          # end
+          yield record
+          # sum -= record[:value]
+        end
+      else
+        $stderr.puts "Unknown file #{filename}"
+      end
+    end
+  end
+end
+
+def guess(row)
+  text = row['text']
+  $matches.each do |matcher, category|
+    if text =~ matcher
+      return category
+    end
+  end
+  nil
+end
+
+years = {}
+months = {}
+records(ARGV) do |record|
+  date = record[:date] # 12.04.2011
+  month = date[3,2]
+  year = date[6,4]
+  years[year] = true
+  months[month] = true
+end
+
+if years.size != 1 || months.size != 1
+  $stderr.puts "Not just a month"
+else
+  year = years.first.first.to_i
+  month = months.first.first.to_i
+
+  db_path = $paths['db'] % [ year, month ]
+  csv_path = $paths['csv'] % [ year, month ]
+
+  db = Database.new(db_path)
+
+  records(ARGV) do |record|
+    db.add_record(record)
+  end
+
+  missing = db.verify({})
+
+  if missing.length > 0
+    missing.each do |row|
+      category = guess(row)
+      if category
+        puts "Found #{category}"
+        db.update_category(row['uniq'], category)
+      else
+        puts "Unknown #{row['text']}"
+      end
+    end
+  else
+    puts "Exporting #{csv_path}"
+    db.export(csv_path)
+  end
+end

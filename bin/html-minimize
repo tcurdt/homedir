@@ -1,0 +1,83 @@
+#!/usr/bin/ruby
+
+def usage
+  $stderr.puts("Usage: #{File.basename($0)} <source dir> <destination dir>")
+  exit(1)
+end
+
+src = '.'
+dst = 'minimized'
+
+case ARGV.length
+  when 0:
+  when 1:
+    src = ARGV[0]
+  when 2:
+    src = ARGV[0]
+    dst = ARGV[1]
+  else
+    usage()
+end
+
+png  = Dir[ "#{src}/**/*.png" ]
+js   = Dir[ "#{src}/**/*.js" ]
+css  = Dir[ "#{src}/**/*.css" ]
+html = Dir[ "#{src}/**/*.html" ]
+
+puts "Copying site #{src} to #{dst}"
+
+`rm -rf #{dst}`
+`cd #{src}; tar czf /tmp/copy.tgz --exclude .git .`
+`mkdir #{dst}`
+`cd #{dst}; tar xzf /tmp/copy.tgz`
+`rm -f /tmp/copy.tgz`
+
+js.each do |file|
+  file = File.basename(file)
+  if not file =~ /\.min\./i
+    puts "JS minimizing #{file}"
+    `yuicompressor #{file} -o #{dst}/#{file} --charset utf-8`
+  end
+  `gzip -c #{dst}/#{file} > #{dst}/#{file}.gz`
+end
+
+css.each do |file|
+  file = File.basename(file)
+  puts "CSS minimizing #{file}"
+  `yuicompressor #{file} -o #{dst}/#{file} --charset utf-8`
+  `gzip -c #{dst}/#{file} > #{dst}/#{file}.gz`
+end
+
+html.each do |file|
+  file = File.basename(file)
+  puts "HTML minimizing #{file}"
+  `gzip -c #{dst}/#{file} > #{dst}/#{file}.gz`
+end
+
+png.each do |file|
+  file = File.basename(file)
+  puts "PNG minimizing #{file}"  
+  `pngcrush #{file} #{dst}/#{file}`
+end
+
+original_sum = 0
+minimized_sum = 0
+
+(js + css + html + png).each do |file|
+  original = File.size(file)
+  file = File.basename(file)
+  
+  if File.exists?("#{dst}/#{file}.gz")
+    minimized = File.size("#{dst}/#{file}.gz")
+  else
+    minimized = File.size("#{dst}/#{file}")
+  end
+  
+  puts "#{file}: #{original} => #{minimized}"
+  
+  original_sum += original
+  minimized_sum += minimized
+
+end
+
+puts "TOTAL: #{original_sum} => #{minimized_sum}"

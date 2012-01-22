@@ -1,0 +1,10 @@
+#!/usr/bin/env ruby
+require 'set'
+
+seen = Set.new
+ARGF.each do |line|
+  if !seen.include?(line)
+    puts line
+    seen << line
+  end
+end

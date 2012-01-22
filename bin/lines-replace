@@ -1,0 +1,46 @@
+#!/usr/bin/env ruby
+require 'iconv'
+
+if ARGV.length != 3
+  $stderr.puts("Usage: #{File.basename($0)} <from> <to> <filename>")
+  exit(1)
+end
+
+def fix(s)
+  ic = Iconv.new('UTF-8//IGNORE', 'UTF-8')
+  ic.iconv(s + ' ')[0..-2]
+end
+
+snippet_src = fix(File.read(ARGV[0])).split("\n")
+snippet_dst = fix(File.read(ARGV[1])).split("\n")
+file = fix(File.read(ARGV[2])).split("\n")
+
+puts "#{ARGV[2]}: finding #{snippet_src.length} lines in #{file.length} replacing them with #{snippet_dst.length}"
+
+def matches(a, b)
+  return if a.length != b.length
+  (0..a.length).each do |i|
+    return false if (a[i]||'').strip != (b[i]||'').strip
+  end
+  true
+end
+
+def replace(file, snippet_src, snippet_dst, start = 0)
+  if start + snippet_src.length > file.length
+    file
+  else
+    if matches(snippet_src, file[start, snippet_src.length])
+      replace(
+        file[0, start] +
+        snippet_dst +
+        file[start + snippet_src.length..file.length],
+        snippet_src, snippet_dst, start + snippet_dst.length)
+    else
+      replace(file, snippet_src, snippet_dst, start + 1)
+    end
+  end
+end
+
+file = replace(file, snippet_src, snippet_dst)
+
+File.open(ARGV[2], 'w') { |f| f.write(file.join("\n")) }

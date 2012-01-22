@@ -1,0 +1,54 @@
+#!/bin/sh
+
+DEPTH="-maxdepth 1"
+DELETE=OFF
+
+usage() {
+  echo "usage: $0 [-d] [-r] path1 ..."
+  exit 1
+}
+
+onfile() {
+  echo "file: $1"
+}
+
+while getopts rd opt
+do
+  case "$opt" in
+    r)  DEPTH="";;
+    d)  DELETE=ON;;
+    \?) usage;;
+  esac
+done
+shift `expr $OPTIND - 1`
+
+while [ $# -gt 0 ]
+do
+  if [ $DELETE == ON ]; then
+    find -x -L "$1" $DEPTH -type l -print -exec rm {} \;
+  else
+    find -x -L "$1" $DEPTH -type l -print
+  fi
+  shift
+done
+
+# TestCase
+# rm -rf test 2>/dev/null
+# mkdir -p test
+# cd test
+# 
+# touch file1
+# touch file2
+# ln -s file1 test1
+# ln -s file2 test2
+# rm file2
+# 
+# echo "links"
+# find . -type l -print
+# 
+# echo "delete broken"
+# # find -x -L . -type l -print -delete
+# find -x -L . -type l -print -exec rm {} \;
+# 
+# echo "left"
+# find . -type l -print

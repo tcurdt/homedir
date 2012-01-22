@@ -1,0 +1,138 @@
+#!/usr/bin/env ruby
+require 'optparse'
+require 'ostruct'
+
+class Stats
+  attr_reader :count, :min, :max, :sum
+
+  def initialize()
+    @sum = 0
+    @count = 0
+    @min = 999999
+    @max = -999999
+  end
+
+  def push(value)
+    @count += 1
+    if @count == 1
+      @old_m = @new_m = value
+      @old_s = 0
+    else
+      @new_m = @old_m + (value - @old_m) / @count
+      @new_s = @old_s + (value - @old_m) * (value - @new_m)
+      @old_m = @new_m
+      @old_s = @new_s
+    end
+    @min = value if value < @min
+    @max = value if value > @max
+    @sum += value
+  end
+
+  def mean
+    (@count > 0) ? @new_m : 0
+  end
+
+  def variance
+    (@count > 1) ? @new_s / (@count - 1) : 0
+  end
+
+  def stddev
+    Math.sqrt(variance)
+  end
+end
+
+def numeric?(object)
+  true if Float(object) rescue false
+end
+
+# def ts(st)
+#     st.to_s.gsub(/(\d)(?=(\d\d\d)+(?!\d))/, "\\1,")
+# end
+
+options = OpenStruct.new
+options.min = 0
+options.max = 100
+options.bins = 10
+
+optparse = OptionParser.new do|opts|
+   opts.banner = "Usage: #{$0} [options] file1 file2 ..."
+
+   opts.on( '--min NUM', Float, "min value") do |min|
+     options.min = min
+   end
+
+   opts.on( '--max NUM', Float, "max value") do |max|
+     options.max = max
+   end
+
+   opts.on( '--bins [NUM]', Float, "number of bins") do |bins|
+     options.bins = bins
+   end
+
+   opts.on( '-h', '--help', 'Display this screen' ) do
+     puts opts
+     exit
+   end
+end
+
+optparse.parse!
+
+min = options.min
+max = options.max
+bin_count = options.bins
+bin_width = ((max - min) / bin_count).floor
+
+histogram = []
+not_covered = 0
+stats = Stats.new
+ARGF.lines do |line|
+  if numeric?(line)
+    value = line.to_f
+    bin = ((value - min) / bin_width).floor
+    if bin >= 0 && bin <= bin_count
+      histogram[bin] = (histogram[bin] || 0) + 1
+    else
+      not_covered += 1
+    end
+    stats.push(value)
+  end
+end
+
+histogram.map!{ |v| (v == nil) ? 0 : v }
+
+line_width = 70
+histogram_max = histogram.max
+scale = line_width.to_f / histogram_max
+scale = 1.0 if scale > 1.0
+
+start_chars = Math::log10(max + bin_width).ceil + 3
+width_chars = Math::log10(histogram_max).ceil
+
+(0..bin_count).each do |bin|
+  start = min + bin * bin_width
+  width = histogram[bin] || 0
+  puts "%*.2f - %*.2f [%*d]: %s" % [
+    start_chars, start,
+    start_chars, start + bin_width,
+    width_chars, width, "*" * (scale * width)
+  ]
+end
+
+puts "%d values ranging from min=%1.2f to max=%1.2f, mean=%1.2f, stddev=%1.2f" % [
+  stats.count,
+  stats.min,
+  stats.max,
+  stats.mean,
+  stats.stddev
+  ]
+
+if not_covered > 0
+  warn "%d of these values are not covered by the histogram range" % [ not_covered ]
+end
+
+# puts "count: %d"    % [ stats.count ]
+# puts "min: %1.2f" % [ stats.min ]
+# puts "max: %1.2f" % [ stats.max ]
+# puts "mean: %1.2f" % [ stats.mean ]
+# puts "stddev: %1.2f" % [ stats.stddev ]
+

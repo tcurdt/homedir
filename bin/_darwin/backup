@@ -1,0 +1,26 @@
+#!/bin/sh
+
+# SITE=tcurdt@vserver-us
+# 
+# rsync -rtlzv --delete --ignore-errors --exclude "lost+found" --stats --progress \
+#         $SITE:/home/tcurdt/ \
+#         $HOME/Backup/slicehost/home/tcurdt/
+# 
+# rsync -rtlzv --delete --ignore-errors --exclude "lost+found" --stats --progress \
+#         $SITE:/var/www/ \
+#         $HOME/Backup/slicehost/var/www/
+
+SITE=tcurdt@vserver-de
+
+rsync -rtlzv --delete --ignore-errors --exclude "lost+found" --stats --progress \
+        --exclude "src" \
+        $SITE:/home/tcurdt/ \
+        $HOME/Backup/hosteurope/home/tcurdt/
+
+rsync -rtlzv --delete --ignore-errors --exclude "lost+found" --stats --progress \
+        $SITE:/var/www/ \
+        $HOME/Backup/hosteurope/var/www/
+
+rsync -rtlzv --delete --ignore-errors --exclude "lost+found" --stats --progress \
+        $SITE:/var/nodejs/ \
+        $HOME/Backup/hosteurope/var/nodejs/

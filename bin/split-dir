@@ -1,0 +1,53 @@
+#!/usr/bin/ruby
+# split-dir <dir> each 200
+# split-dir <dir> by 10
+
+def usage
+  $stderr.puts("Usage:")
+  $stderr.puts("  #{File.basename($0)} <dir> each 200")
+  $stderr.puts("  #{File.basename($0)} <dir> into 10")
+  exit(1)
+end
+
+def split_each(dir, n)
+  files = Dir.new(dir).entries.find_all { |file| File.ftype(File.join(dir, file)) == 'file' }
+  puts "Splitting #{files.length} into dirs of #{n}"
+  prev = nil
+  files.each_with_index do |file, i|
+    current = File.join(dir, "%04d" % [ (i / n).to_i ])
+    if current != prev && !File.directory?(current)
+      Dir.mkdir(current)
+    end
+    File.rename(File.join(dir, file), File.join(current, File.basename(file)))
+    prev = current
+  end
+end
+
+def split_into(dir, n)
+  files = Dir.new(dir).entries.find_all { |file| File.ftype(File.join(dir, file)) == 'file' }
+  puts "Splitting #{files.length} into #{n} dirs"
+  prev = nil
+  files.each_with_index do |file, i|
+    current = File.join(dir, "%04d" % [ (n * i / files.length).to_i ])
+    if current != prev && !File.directory?(current)
+      Dir.mkdir(current)
+    end
+    File.rename(File.join(dir, file), File.join(current, File.basename(file)))
+    prev = current
+  end
+end
+
+if ARGV.length != 3
+  usage
+end
+
+dir, mode, number = ARGV
+
+case mode
+when 'each'
+  split_each(dir, number.to_i)
+when 'into'
+  split_into(dir, number.to_i)
+else
+  usage
+end

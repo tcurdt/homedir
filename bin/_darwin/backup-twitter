@@ -1,0 +1,58 @@
+#!/usr/bin/env ruby
+require "rubygems"
+require "twitter"
+require 'tempfile'
+require 'time'
+
+def since_id(filename)
+  if File.exists?(filename)
+    line = File.open(filename) { |f| f.readline } rescue nil
+    if line && id = line.split("\t").first
+      return id.to_i + 1
+    end
+  end
+  nil
+end
+
+userid = ARGV[0] || 'tcurdt'
+filename = ARGV[1] || File.expand_path('~/Backup/twitter.tsv')
+
+puts "writing to #{filename}"
+
+tweets = 3200
+count = 200
+pages = tweets/count
+max_id = Twitter.user_timeline(userid, { :count => 1, :trim_user => true }).first.id
+since_id = since_id(filename) || 1
+
+options = { :count => count, :trim_user => true, :max_id => max_id }
+
+stop = false
+tempfile = Tempfile.new('twitter')
+for page in 1..pages do
+  puts "#{page} / #{pages}"
+  options[:page] = page
+  tweets = Twitter.user_timeline(userid, options)
+  if tweets.length > 0
+    puts "from #{tweets.first.id} at #{tweets.first.created_at.strftime('%Y-%m-%d %T')}"
+    tweets.each do |tweet|
+      if tweet.id < since_id
+        puts "until #{tweet.id} at #{tweet.created_at.strftime('%Y-%m-%d %T')}"
+        stop = true
+        break
+      end
+      tempfile.write("#{tweet.id}\t#{tweet.created_at.strftime('%Y-%m-%d %T')}\t#{tweet.text}\n")
+    end
+  end
+  break if stop
+end
+if File.exist?(filename)
+  File.open(filename) do |file|
+    tempfile.write(file.read)
+  end
+end
+tempfile.close
+if File.exist?(filename)
+  File.delete(filename)
+end
+File.rename(tempfile, filename)

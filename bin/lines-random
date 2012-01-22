@@ -1,0 +1,7 @@
+#!/usr/bin/env ruby
+
+min = -10
+max = 3000
+2000.times do |i|
+  puts Random.rand(max-min) + min
+end

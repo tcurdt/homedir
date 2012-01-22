@@ -1,0 +1,21 @@
+#!/usr/bin/env ruby
+
+class TopArray < Array
+  def initialize(max)
+    @max = max
+  end
+  def insert_sort(name, value)
+    pos = find_index { |(n,v)| value >= v } || length
+    if pos && pos <= @max
+      insert(pos, [ name, value ])
+    end
+    while length > @max
+      pop
+    end
+    self
+  end
+end
+
+topk = TopArray.new
+ARGF.lines do |line|
+end

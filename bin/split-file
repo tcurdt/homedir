@@ -1,0 +1,81 @@
+#!/usr/bin/env ruby
+
+def usage
+  $stderr.puts("Usage: #{File.basename($0)} [-l] [-v] [-h] part/parts filename")
+  exit(1)
+end
+
+parameters = []
+options = []
+verbose = false
+line = false
+
+ARGV.each do |arg|
+  if arg[0] == '-'
+    options << arg
+  else
+    parameters << arg
+  end
+end
+
+if parameters.length != 2 then
+  usage()
+end
+
+options.each do |option|
+  case option
+  when '-l'
+    line = true
+  when '-v'
+    verbose = true
+  when '-h'
+    usage()    
+  end
+end
+
+part, parts = parameters[0].split('/').map { |v| v.to_i }
+filename = parameters[1]
+
+if part < 1 || part > parts
+  $stderr.puts("part/parts with part in [1..parts]")
+  exit(1)
+end
+
+filesize = File.size(filename)
+start = (part-1) * filesize / parts
+stop = part * filesize / parts
+
+if verbose
+  $stderr.puts "#{part}/#{parts} [#{start}..#{stop}] of #{filename} (#{filesize} bytes)"
+end
+
+
+if line
+
+  File.open(filename) do |f|
+    if start > 0
+      f.pos = start-1
+      f.gets
+    end
+    while f.pos < stop
+      puts f.gets
+    end
+  end
+
+else
+
+  chunks = 4096
+  File.open(filename, 'rb') do |f|
+    f.pos = start
+    remaining = stop - start
+    begin
+      while remaining > 0
+        data = f.readpartial( remaining > chunks ? chunks : remaining )
+        $stdout.write(data)
+        remaining -= data.length
+      end
+    rescue EOFError
+    end
+  end
+  
+end

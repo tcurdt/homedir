@@ -1,0 +1,55 @@
+#!ruby
+
+require 'net/http'
+require 'uri'
+require 'hpricot'
+require 'open-uri'
+
+def isLive?(url)
+  uri = URI.parse(url)
+  response = nil
+  Net::HTTP.start(uri.host, uri.port) do |http|
+    response = http.head(uri.path.size > 0 ? uri.path : "/")
+  end
+  return [ "200", "301", "302" ].include? response.code
+end
+
+ARGV.each do |dir|
+  cache = {}
+
+  Dir[dir + '/**/*.html'].each do |file|
+
+    doc = open(file, 'User-Agent' => 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.6; en-US; rv:1.9.1.2) Gecko/20090729 Firefox/3.5.2') do
+      |f| Hpricot(f)
+    end
+
+    links = doc.search('a')
+
+    broken = []
+    links.each do |link|
+      href = link['href']
+      if (href =~ /^http/)
+        if !cache.include?(href)
+          begin
+            cache[href] = isLive?(href)
+            if !cache[href]
+              broken << href
+            end
+          rescue
+            # broken << href
+          end
+        end
+      else
+        # rel
+      end
+    end
+
+    if broken.length > 0
+      puts "#{file}"
+      broken.each do |href|
+        puts " - #{href} = #{cache[href]}"
+      end
+    end
+
+  end
+end

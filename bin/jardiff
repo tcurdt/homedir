@@ -1,0 +1,32 @@
+#!/bin/sh
+
+# javadiff jar1.jar jar2.jar > CHANGES.javadiff
+function javadiff() {
+    mkdir -p /tmp/javadiff
+    unzip -t $1 | grep 'class' | sed 's/.class   OK//' | sed 's/    testing: //' |
+ sed 's/\//./g' > /tmp/javadiff/class.list.1
+    unzip -t $2 | grep 'class' | sed 's/.class   OK//' | sed 's/    testing: //' |
+ sed 's/\//./g' > /tmp/javadiff/class.list.2
+    echo 'Jar changes'
+    echo '==========='
+    diff /tmp/javadiff/class.list.1 /tmp/javadiff/class.list.2 | grep -v '^[0-9]'
+    echo
+    echo
+    echo 'Class changes'
+    echo '============='
+#    classes=`cat /tmp/javadiff/class.list.1 /tmp/javadiff/class.list.2 | sort -u`
+    classes=`grep /tmp/javadiff/class.list.1 -f /tmp/javadiff/class.list.2`
+    for i in $classes
+    do
+        javap -classpath $1 $i 2>&1 | sed 's/ not found/ has been added/' > /tmp/javadiff/foo.1
+        javap -classpath $2 $i 2>&1 | sed 's/ not found/ has been removed/' > /tmp/javadiff/foo.2
+        echo $i
+        echo '--------------------'
+        diff /tmp/javadiff/foo.1 /tmp/javadiff/foo.2 | grep -v '^[0-9]'
+        echo
+    done
+}
+
+javadiff $1 $2
+
+exit 0

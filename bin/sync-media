@@ -1,0 +1,82 @@
+#!/bin/bash
+
+# sync-media Series -s disk -d server
+# sync-media Series -s server -d disk
+usage()
+{
+cat << EOF
+usage: $0 -r -s <disk|server> -d <disk|server> dir
+
+OPTIONS:
+   -h      show this message
+   -r      really do it
+   -s      source to sync from <disk|server>
+   -d      destination to sync to <disk|server>
+EOF
+}
+
+SOURCE=
+DESTINATION=
+DIR=
+REALLY="-n"
+while getopts "hrs:d:" OPTION; do
+  case $OPTION in
+    h)
+      usage
+      exit 1
+      ;;
+    r)
+      REALLY=""
+      ;;
+    s)
+      SOURCE=$OPTARG
+      ;;
+    d)
+      DESTINATION=$OPTARG
+      ;;
+    ?)
+      usage
+      exit
+    ;;
+  esac
+done
+shift $(($OPTIND - 1))
+DIR=$1
+
+if [[ -z $SOURCE ]] || [[ -z $DESTINATION ]] || [[ -z $DIR ]]; then
+  usage
+  exit 1
+fi
+
+if [ $SOURCE != "disk" ] && [ $DESTINATION != "disk" ]; then
+  echo "No disk"
+  usage
+  exit 1
+fi
+
+if [ $SOURCE != "server" ] && [ $DESTINATION != "server" ]; then
+  echo "No server"
+  usage
+  exit 1
+fi
+
+SERVER=`mount | grep "/Volumes/$DIR" | grep afp | sed 's/ (.*$//g' | sed 's/^.* on //g'`
+DISK=`mount | grep "/Volumes/$DIR" | grep hfs | sed 's/ (.*$//g' | sed 's/^.* on //g'`
+
+if [[ -z "$SERVER" ]] || [[ -z "$DISK" ]] || [ "$SERVER" == "$DISK" ]; then
+  echo "Did not find server and disk mounted"
+  usage
+  exit 1
+fi
+
+if [ $SOURCE == "disk" ]; then
+  FROM="$DISK"
+  TO="$SERVER"
+else
+  FROM="$SERVER"
+  TO="$DISK"
+fi
+
+echo "$FROM -> $TO"
+
+rsync $REALLY -tOhWir --exclude-from="$DISK/.syncexclude" --size-only --stats --progress "$FROM/" "$TO/" #| grep -v "\.d" | grep -v "cd"
