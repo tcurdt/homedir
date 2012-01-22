@@ -1,0 +1,26 @@
+alias pastebin='pbpaste | gist | pbcopy'
+alias vim='mvim'
+
+#export EDITOR='mate -w'
+export EDITOR='mvim -f -c "au VimLeave * !open -a Terminal"'
+
+# homebrew
+export PATH=/usr/local/sbin:/usr/local/Cellar:$PATH
+
+# export PATH=~/.bin:/usr/local/bin:~/node_modules/.bin:$PATH
+# export MANPATH=/usr/local/share/man:$MANPATH
+
+# java
+# source ~/.bin/jdk
+export M2_HOME=~/Library/Java/mvn
+export ANT_HOME=~/Library/Java/ant
+export JAVA_HOME=/Library/Java/Home
+
+# git
+source /usr/local/etc/bash_completion.d/git-completion.bash
+GIT_PS1_SHOWDIRTYSTATE=true
+export PS1='\h:\W$(__git_ps1 "(%s)") \u\$ '
+
+# rvm
+if [[ -s ~/.rvm/scripts/rvm ]] ; then source ~/.rvm/scripts/rvm ; fi
+if [ ! -z "$PS1" ]; then rvm-prompt ; fi

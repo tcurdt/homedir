@@ -1,0 +1,22 @@
+startup_message off
+autodetach on
+defscrollback 5000
+shell -$SHELL
+escape ^Zz
+vbell off
+
+logfile $HOME/.screen/logs/%Y%m%d-%n.log
+deflog on
+
+caption always “%{kB}%?%-Lw%?%{bw}%n*%f %t%?(%u)%?%{kB}%?%+Lw%?”
+hardstatus alwayslastline “%{BW}%16=%l %{BW}%50=%d/%m/%Y %{BW}%80=%c%=”
+# hardstatus alwayslastline "%{=b}%{G}%w %=[%Y-%m-%d -- %C]"
+
+# support color X terminals
+termcap xterm 'XT:AF=\E[3%dm:AB=\E[4%dm:AX'
+terminfo xterm 'XT:AF=\E[3%p1%dm:AB=\E[4%p1%dm:AX'
+termcapinfo xterm 'XT:AF=\E[3%p1%dm:AB=\E[4%p1%dm:AX:hs:ts=\E]2;:fs=\007:ds=\E]2;screen\007'
+termcap xtermc 'XT:AF=\E[3%dm:AB=\E[4%dm:AX'
+terminfo xtermc 'XT:AF=\E[3%p1%dm:AB=\E[4%p1%dm:AX'
+termcapinfo xtermc 'XT:AF=\E[3%p1%dm:AB=\E[4%p1%dm:AX:hs:ts=\E]2;:fs=\007:ds=\E]2;screen\007'
+
