@@ -108,13 +108,17 @@ scale = 1.0 if scale > 1.0
 start_chars = Math::log10(max + bin_width).ceil + 3
 width_chars = Math::log10(histogram_max).ceil
 
+histogram_sum = histogram.inject(:+)
+
 (0..bin_count).each do |bin|
   start = min + bin * bin_width
   width = histogram[bin] || 0
-  puts "%*.2f - %*.2f [%*d]: %s" % [
+  puts "%*.2f - %*.2f [%*d, %3d%%]: %s" % [
     start_chars, start,
     start_chars, start + bin_width,
-    width_chars, width, "*" * (scale * width)
+    width_chars, width,
+    100 * width / histogram_sum,
+    "*" * (scale * width)
   ]
 end
 
