@@ -36,7 +36,7 @@
 
 [alias]
     cr = clone --recursive
-    st = status -s -b
+    st = status -s
     co = checkout
     ci = commit -v
     aa = add --all
