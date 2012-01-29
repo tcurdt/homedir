@@ -1,4 +1,5 @@
 export DISPLAY=:0.0
+# sudo locale-gen en_US.UTF-8
 export LC_ALL=en_US.UTF-8
 export LC_CTYPE=UTF-8
 export LANG=en_US
