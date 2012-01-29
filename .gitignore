@@ -11,6 +11,7 @@
 !/.npmrc
 !/.profile
 !/.profile.darwin
+!/.profile.linux-gnu
 !/.screenrc
 !/.uncrustify
 !/.vim/
