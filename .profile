@@ -3,7 +3,6 @@ export DISPLAY=:0.0
 export LC_ALL=en_US.UTF-8
 export LC_CTYPE=UTF-8
 export LANG=en_US
-export LESSOPEN='| lesspipe.sh %s'
 export FIGNORE=.svn
 
 alias ll='ls -la'
@@ -28,3 +27,13 @@ PLATFORM_PROFILE=.profile.${OS}
 if [ -f "$PLATFORM_PROFILE" ]; then
   source $PLATFORM_PROFILE
 fi
+
+# if [[ "$PS1" &&; "${STARTED_SCREEN:-No}" = No && "${SSH_TTY:-No}" != No ]]; then
+# STARTED_SCREEN=1 ; export STARTED_SCREEN
+# if [ -d $HOME/.screen/logs ]; then
+# sleep 1
+# screen -RR && exit 0
+# echo "Screen failed! continuing with normal bash startup"
+# else
+# mkdir -p $HOME/.screen/logs
+# fi
