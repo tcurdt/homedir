@@ -140,6 +140,10 @@ SQL
         currency = row['currency']
         text = Iconv.conv('ASCII//IGNORE', 'UTF8', row['text'])
 
+        if categories[row['category']] == 0
+          next
+        end
+
         if !categories[row['category']]
           puts "Unknown category: #{row['category']}"
           next
