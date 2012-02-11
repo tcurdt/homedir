@@ -1,11 +1,5 @@
 # tcurdt's scripts
 
-To install all these scripts just checkout the repo and then run
-
-    sh _scripts.sh install /usr/local/bin
-
-which will set symbolic links to the scripts in the repo in the directory provided.
-
 ## backup-twitter
 
 Simple script to backup your tweets.
@@ -35,23 +29,23 @@ After wasting way too much time with the maven release plugin I came up with thi
 
 This is a tailored script. No support for other SCMs is planned, multi-module support might come at some stage. Improvements and suggestion are always welcome though.
 
-## part
+## split-file
 
-The "split" command is great if you want to split files into pieces of a certain size. Not so great if you want to split files into equal size though. "part" works just slightly different. It does the partitioning for you and you can efficiently grab the part of the file you need.
+The "split-file" command is great if you want to split files into pieces of a certain size. Not so great if you want to split files into equal size though. "split-file" works just slightly different. It does the partitioning for you and you can efficiently grab the part of the file you need.
 
-    part 1/3 file > file.1
-    part 2/3 file > file.2
-    part 3/3 file > file.3
+    split-file 1/3 file > file.1
+    split-file 2/3 file > file.2
+    split-file 3/3 file > file.3
 
-This gets more interesting if you want to split text files on their line boundaries. Instead of counting the lines and passing the fraction to "split" you can just add the option "-l" with "part".
+This gets more interesting if you want to split text files on their line boundaries. Instead of counting the lines and passing the fraction to "split" you can just add the option "-l" with "split-file".
 
-    part -l 1/3 file.txt > file.txt.1
-    part -l 2/3 file.txt > file.txt.2
-    part -l 3/3 file.txt > file.txt.3
+    split-file -l 1/3 file.txt > file.txt.1
+    split-file -l 2/3 file.txt > file.txt.2
+    split-file -l 3/3 file.txt > file.txt.3
 
-While "part" still splits on file size it honors the line boundaries. This means the exact number of lines still may be different per file but you end up with similar sized file.
+While "split-file" still splits on file size it honors the line boundaries. This means the exact number of lines still may be different per file but you end up with similar sized file.
 
-## random
+## lines-random
 
 Ever wanted to x random lines out of 10GB text file? Most of the usual approaches fail short when files get too big. This script is efficient also on large files.
 
@@ -82,11 +76,3 @@ The Apple store is down and you have better things to do than hitting reload and
 ## xcode-release
 
 My script to release Mac projects
-
-## xcode-structure
-
-Modify the structure of a new Xcode project to my liking.
-
-## xcode-verify-strings
-
-Compare the strings files for all languages and find missing keys.

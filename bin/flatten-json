@@ -1,0 +1,20 @@
+#!/usr/bin/env ruby
+# gem install json-stream
+require 'json/stream'
+path = []
+type = []
+@parser = JSON::Stream::Parser.new do
+  start_document { }
+  end_document   { }
+  start_object   { type.push true }
+  end_object     { type.pop }
+  start_array    { type.push false }
+  end_array      { type.pop }
+  key            { |k| path.push k }
+  value          { |v|
+    puts "#{path.join('/')}: #{v}"
+    path.pop if type.last
+  }
+end
+
+@parser << ARGF
