@@ -1,20 +1,159 @@
 #!/usr/bin/env ruby
-# gem install json-stream
-require 'json/stream'
-path = []
-type = []
-@parser = JSON::Stream::Parser.new do
-  start_document { }
-  end_document   { }
-  start_object   { type.push true }
-  end_object     { type.pop }
-  start_array    { type.push false }
-  end_array      { type.pop }
-  key            { |k| path.push k }
-  value          { |v|
-    puts "#{path.join('/')}: #{v}"
-    path.pop if type.last
-  }
+# gem install yajl-ruby
+# gem install awesome_print
+# from https://gist.github.com/944974
+require 'yajl'
+require 'awesome_print'
+require 'optparse'
+
+module JsonPipe
+  DEFAULTS = {in: $stdin, out: $stdout, sep: '/', v_sep: "\t", no_root: false}
+
+  class Pipe
+    def initialize(obj, opts = {})
+      opts = DEFAULTS.merge(opts)
+
+      @obj     = obj
+      @out     = opts[:out]
+      @sep     = opts[:sep]
+      @v_sep   = opts[:v_sep]
+      @no_root = opts[:no_root]
+
+      @context = []
+    end
+
+    def print
+      print_obj(@obj)
+    end
+
+    private
+
+    def print_obj(json)
+      @out.print @sep unless @no_root
+      @out.print @context.join(@sep)
+      @out.print @v_sep unless @context.empty? && @no_root
+      case json
+      when Hash
+        @out.puts "{}"
+        json.each do |k, v|
+          @context.push k
+          print_obj(v)
+          @context.pop
+        end
+      when Array
+        @out.puts "[]"
+        json.each_with_index do |v, idx|
+          @context.push idx
+          print_obj(v)
+          @context.pop
+        end
+      else
+        Yajl::Encoder.encode(json, @out)
+        @out.puts
+      end
+    end
+  end
+
+  class Unpipe
+    def initialize(opts = {})
+      opts = DEFAULTS.merge(opts)
+
+      @sep     = Regexp.escape(opts[:sep])
+      @v_sep   = Regexp.escape(opts[:v_sep])
+      @no_root = opts[:no_root]
+      @out     = opts[:out]
+      @in      = opts[:in]
+    end
+
+    def parse
+      obj = nil
+      @in.each do |line|
+        line.chomp!
+
+        if @no_root && !obj
+          pointer = nil
+          value = line
+        else
+          m = /^(.+?)#@v_sep([^#@v_sep]+)$/.match(line)
+          raise "Parsing error #{@in.lineno}: #{line}" unless m
+          elm, value = m.captures
+          parts = elm.split(/#@sep/).map do |p|
+            p =~ /^\d+$/ ? p.to_i : p
+          end
+          *parents, child = parts
+          parents.shift unless @no_root
+          pointer = parents.inject(obj){|o, p| o[p]}
+        end
+
+        value = Yajl::Parser.parse value
+        if pointer
+          pointer[child] = value
+        else
+          obj = value
+        end
+      end
+      Yajl::Encoder.encode(obj, @out)
+      @out.puts
+    end
+  end
 end
 
-@parser << ARGF
+
+
+if __FILE__ == $PROGRAM_NAME
+  $format = :simple
+  $decode = false
+  options = {}
+  opt = OptionParser.new do |opts|
+    opts.banner = "Usage: #$0 [options]"
+    opts.separator ""
+    opts.separator "Options:"
+    opts.on('-h', '--help', 'Show help message') do
+      puts opts
+      exit
+    end
+    opts.on('-f', '--format [TYPE]', [:simple, :awesome],  "Select format simple(default) or awesome") do |f|
+      $format = f
+    end
+    opts.separator 'The following options are valid for simple format only:'
+    opts.on('-s', '--separator SEP', 'Specify path separator') do |sep|
+      options[:sep] = eval "\"#{sep}\""
+    end
+    opts.on('-v', '--value-separator SEP', 'Specify value separator') do |sep|
+      options[:v_sep] = eval "\"#{sep}\""
+    end
+    opts.on('-r' ,'--no-root', "Don't print root path") do
+      options[:no_root] = true
+    end
+    opts.on('-u', '--unpipe', "Decode json from the jsonpipe output") do
+      $decode = true
+    end
+  end
+
+  begin
+    opt.parse!
+
+    if $decode
+      JsonPipe::Unpipe.new(options).parse
+    else
+      parser = Yajl::Parser.new
+      obj = parser.parse($stdin)
+
+      case $format
+      when :simple
+        JsonPipe::Pipe.new(obj, options).print
+      when :awesome
+        ap obj
+      end
+    end
+  rescue OptionParser::MissingArgument
+    $stderr.puts $!.message
+    puts opt
+    exit -1
+  rescue StandardError
+    $stderr.puts $!.message
+    exit -1
+  rescue Exception
+    exit -1
+  end
+end
