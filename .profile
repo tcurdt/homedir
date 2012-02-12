@@ -1,16 +1,16 @@
 export DISPLAY=:0.0
+export FIGNORE=.svn
 # sudo locale-gen en_US.UTF-8
 export LC_ALL=en_US.UTF-8
 export LC_CTYPE=UTF-8
 export LANG=en_US
-export FIGNORE=.svn
 
 alias ll='ls -la'
 alias ..='cd ..'
 alias h='history'
-alias scpresume='rsync --partial --progress --rsh=ssh'
-alias download='curl -C - -O'
-type pigz >/dev/null && alias gzip='pigz'
+type curl  >/dev/null 2>&1 && alias download='curl -C - -O'
+type rsync >/dev/null 2>&1 && alias scpresume='rsync --partial --progress --rsh=ssh'
+type pigz  >/dev/null 2>&1 && alias gzip='pigz'
 
 # history
 export HISTFILESIZE=50000
@@ -20,6 +20,19 @@ export HISTIGNORE="pwd:ls:cd:exit"
 export HISTCONTROL=ignoredups
 shopt -s histappend
 
+# rbenv
+if [[ -s /usr/local/bin/rbenv ]] ; then
+  export PATH="$HOME/.rbenv/bin:$PATH"
+  eval "$(rbenv init -)"
+  alias b='bundle exec'
+fi
+
+# rvm
+if [[ -s ~/.rvm/scripts/rvm ]] ; then
+  source ~/.rvm/scripts/rvm
+  rvm-prompt
+fi
+
 # platform specific
 OS=${OSTYPE//[0-9.]/}
 export PATH=$PATH:~/bin/_${OS}:~/bin
@@ -27,6 +40,11 @@ PLATFORM_PROFILE=.profile.${OS}
 if [ -f "$PLATFORM_PROFILE" ]; then
   source $PLATFORM_PROFILE
 fi
+
+# git
+GIT_PS1_SHOWDIRTYSTATE=true
+export PS1='\h:\W$(__git_ps1 "(%s)") \u\$ '
+
 
 # if [[ "$PS1" &&; "${STARTED_SCREEN:-No}" = No && "${SSH_TTY:-No}" != No ]]; then
 # STARTED_SCREEN=1 ; export STARTED_SCREEN

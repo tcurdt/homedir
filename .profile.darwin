@@ -1,7 +1,12 @@
 export LESSOPEN='| lesspipe.sh %s'
 
 #export EDITOR='mate -w'
-export EDITOR='mvim -f -c "au VimLeave * !open -a Terminal"'
+#export EDITOR='mvim -f -c "au VimLeave * !open -a Terminal"'
+export EDITOR='vim'
+
+# git
+# brew install bash-completion
+source /usr/local/etc/bash_completion.d/git-completion.bash
 
 # homebrew
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/local/Cellar:$PATH
@@ -16,18 +21,3 @@ export JAVA_HOME=/Library/Java/Home
 
 alias pastebin='pbpaste | gist | pbcopy'
 alias vim='mvim'
-
-# git
-source /usr/local/etc/bash_completion.d/git-completion.bash
-GIT_PS1_SHOWDIRTYSTATE=true
-export PS1='\h:\W$(__git_ps1 "(%s)") \u\$ '
-
-# rvm
-if [[ -s ~/.rvm/scripts/rvm ]] ; then
-  source ~/.rvm/scripts/rvm
-fi
-rvm-prompt
-
-# left overs
-# export MANPATH=/usr/local/share/man:$MANPATH
-# source ~/.bin/jdk

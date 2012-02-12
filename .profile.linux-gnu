@@ -5,8 +5,3 @@ export EDITOR='vim'
 
 # git
 source /etc/bash_completion.d/git
-GIT_PS1_SHOWDIRTYSTATE=true
-export PS1='\h:\W$(__git_ps1 "(%s)") \u\$ '
-
-# rvm
-rvm-prompt
