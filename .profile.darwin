@@ -20,4 +20,3 @@ export ANT_HOME=~/Library/Java/ant
 export JAVA_HOME=/Library/Java/Home
 
 alias pastebin='pbpaste | gist | pbcopy'
-alias vim='mvim'

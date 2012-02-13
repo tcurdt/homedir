@@ -13,6 +13,7 @@ endif
 "  map <D-t> :CommandT<CR>
 "endif
 
+filetype on
 filetype off
 filetype plugin indent on
 set nocompatible
