@@ -36,7 +36,7 @@ fi
 # platform specific
 OS=${OSTYPE//[0-9.]/}
 export PATH=$PATH:~/bin/_${OS}:~/bin
-PLATFORM_PROFILE=.profile.${OS}
+PLATFORM_PROFILE=~/.profile.${OS}
 if [ -f "$PLATFORM_PROFILE" ]; then
   source $PLATFORM_PROFILE
 fi
