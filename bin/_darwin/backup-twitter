@@ -25,7 +25,7 @@ pages = tweets/count
 max_id = Twitter.user_timeline(userid, { :count => 1, :trim_user => true }).first.id
 since_id = since_id(filename) || 1
 
-options = { :count => count, :trim_user => true, :max_id => max_id }
+options = { :count => count, :trim_user => true, :max_id => max_id, :include_rts => true }
 
 stop = false
 tempfile = Tempfile.new('twitter')
