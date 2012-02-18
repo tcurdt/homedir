@@ -57,12 +57,11 @@ if [[ $? -ne 0 ]]; then
     exit 4
 fi
 
-set -e
-
 echo "Building done."
 
 echo "Starting GPG agent."
-killall gpg-agent
+killall gpg-agent 1>/dev/null 2>/dev/null
+set -e
 eval "$(gpg-agent --daemon --use-standard-socket)"
 
 echo "Building bundle..."
