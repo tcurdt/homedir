@@ -45,6 +45,13 @@ fi
 GIT_PS1_SHOWDIRTYSTATE=true
 export PS1='\h:\W$(__git_ps1 "(%s)") \u\$ '
 
+# colors
+
+if [ -x /usr/bin/dircolors ]; then
+  eval "`dircolors -b`"
+  alias ls='ls --color=auto'
+fi
+
 
 # if [[ "$PS1" &&; "${STARTED_SCREEN:-No}" = No && "${SSH_TTY:-No}" != No ]]; then
 # STARTED_SCREEN=1 ; export STARTED_SCREEN
