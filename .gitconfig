@@ -47,7 +47,7 @@
     la = !git l --all
     ss = submodule status
     su = submodule update --init --recursive
-    pp = !git pull && git push
+    pp = !git pull --rebase && git push
 
     di = diff
     dc = diff --cached
