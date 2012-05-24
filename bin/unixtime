@@ -1,0 +1,35 @@
+#!/usr/bin/env ruby
+require 'date'
+require 'time'
+
+def usage
+  $stderr.puts("Usage: #{File.basename($0)} time [time] [time] ...")
+  exit(1)
+end
+
+def date(s)
+  [ '%Y-%m-%d', '%m/%d/%Y', '%m/%d/%Y %I:%M %p' ].each do |format|
+    begin
+      return DateTime.strptime(s, format) #.strftime('%Y%m%d')
+    rescue
+      # puts "#{s} does not match #{format}"
+    end
+  end
+  nil
+end
+
+usage if ARGV.length == 0
+
+ARGV.each do |arg|
+  if arg =~ /^\d+$/
+    timestamp = arg.to_i
+    puts Time.at(timestamp).utc
+  else
+    date = date(arg)
+    if date
+      puts date.to_time.utc.to_i
+    else
+      puts "unknown date format"
+    end
+  end
+end

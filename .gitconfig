@@ -79,6 +79,7 @@
     branchreview = log -p master..HEAD
     hub = !hub
     dashboard = "!f() { for branch in $(git branch -a | cut -c 3-); do if [ ! $branch = '->' ]; then branches=\"$branches$(git log --no-walk --pretty=format:\"%ct (%cr)\t%Cgreen$branch%Creset %Cblue%an%Creset\" $branch)\\n\"; fi; done; echo -e $branches | sort -rk1 | cut -c 12-; }; f"
+    standup = "!f() { git log --since=$1.days --author=tcurdt --pretty=format':%C(yellow)%h%Cblue%d%Creset %s %C(green)(%an, %ar)%Creset' --all; }; f"
 
 [core]
     excludesfile = ~/.gitignore_global
