@@ -13,7 +13,7 @@ end
 
 values = {}
 
-STDIN.lines do |line|
+ARGF.each do |line|
     if line =~ /:([\s\w]+)=(\d+)/
         k = $1.strip
         v = $2.strip.to_i
