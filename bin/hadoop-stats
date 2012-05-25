@@ -1,0 +1,45 @@
+#!/usr/bin/env ruby
+
+def keys
+  [
+    "Map input records",
+    "Map output records",
+    "Combine input records",
+    "Combine output records",
+    "Reduce input records",
+    "Reduce output records"
+  ]
+end
+
+values = {}
+
+STDIN.lines do |line|
+    if line =~ /:([\s\w]+)=(\d+)/
+        k = $1.strip
+        v = $2.strip.to_i
+        if keys.include?(k)
+          values[k] = v
+          break if (keys - values.keys) == []
+        end
+    end
+end
+
+def output(max, v, k)
+  return if !v
+  dots = 60 * v / max
+  bar = if (dots != 0)
+    "*" * dots
+  else
+    (v == 0) ? "" : "|"
+  end
+  puts "%s: %10d %s" % [ (k + ' ' * (15 - k.length)), v, bar ]
+end
+
+max = values.values.max
+
+output max, values["Map input records"],      "map in"
+output max, values["Map output records"],     "map out"
+output max, values["Combine input records"],  "combine in"
+output max, values["Combine output records"], "combine out"
+output max, values["Reduce input records"],   "reduce in"
+output max, values["Reduce output records"],  "reduce out"
