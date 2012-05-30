@@ -3,7 +3,7 @@
 watch_apple_store()
 {
   while true; do
-    BACKSOON=`curl -s http://store.apple.com/ | grep title_backsoon`
+    BACKSOON=`curl -s http://store.apple.com/ | grep "store/backsoon"`
     if [ "$BACKSOON" = "" ]; then
       growlnotify -s -m 'The AppStore is back!'
       open 'http://store.apple.com/'
