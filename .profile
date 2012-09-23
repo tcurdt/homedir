@@ -21,7 +21,7 @@ export HISTCONTROL=ignoredups
 shopt -s histappend
 
 # rbenv
-if [[ -s /usr/local/bin/rbenv ]] ; then
+if [[ -s $HOME/.rbenv/bin ]] ; then
   export PATH="$HOME/.rbenv/bin:$PATH"
   eval "$(rbenv init -)"
   alias b='bundle exec'
@@ -35,7 +35,7 @@ fi
 
 # platform specific
 OS=${OSTYPE//[0-9.]/}
-export PATH=$PATH:~/bin/_${OS}:~/bin
+export PATH=$PATH:~/.homedir/bin/_${OS}:~/bin
 PLATFORM_PROFILE=~/.profile.${OS}
 if [ -f "$PLATFORM_PROFILE" ]; then
   source $PLATFORM_PROFILE
@@ -46,7 +46,6 @@ GIT_PS1_SHOWDIRTYSTATE=true
 export PS1='\h:\W$(__git_ps1 "(%s)") \u\$ '
 
 # colors
-
 if [ -x /usr/bin/dircolors ]; then
   eval "`dircolors -b`"
   alias ls='ls --color=auto'

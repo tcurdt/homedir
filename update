@@ -1,0 +1,62 @@
+#!/usr/bin/env ruby
+require 'set'
+require 'pathname'
+
+`git update-server-info 2<&1`
+
+ignore = Set.new([
+  '.',
+  '..',
+  '.git',
+  '.adobe',
+  '.bash_history',
+  '.CFUserTextEncoding',
+  '.cups',
+  '.dropbox',
+  '.DS_Store',
+  '.fontconfig',
+  '.fonts',
+  '.m2',
+  '.tm_properties',
+  '.Trash',
+  '.gem',
+  '.homedir',
+  '.ssh',
+  '.rbenv',
+  '.lesshst',
+])
+src = Set.new(Dir[".*"].map { |f| File.basename(f) }) - ignore
+dst = Set.new(Dir[ENV['HOME'] + "/.*"].map { |f| File.basename(f) }) - ignore
+
+unknown = dst - src
+
+if unknown.length > 0
+  puts "unknown files:"
+  unknown.each do |f|
+    puts " #{f}"
+  end
+  # exit 1
+end
+
+installed = dst & src
+install = src - dst
+
+(installed + install).each do |f|
+  src_path = Pathname.new("./#{f}")
+  dst_path = Pathname.new("#{ENV['HOME']}/#{f}")
+  if dst_path.exist?
+    if dst_path.symlink?
+      puts "ok #{f}"
+    else
+      # need to be handled
+      puts "existing #{f}"
+      # puts "diff #{src_path.realpath} #{dst_path.realpath}"
+    end
+  else
+    # just install
+    puts "linking #{f}"
+    dst_path.make_symlink(src_path.realpath)
+  end
+end
+
+exit 0
