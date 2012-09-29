@@ -42,7 +42,8 @@
     aa = add --all
     au = add -u
     cl = clean -df
-    l = log --graph --oneline --decorate
+    l = log --graph --decorate --no-merges --pretty=format:'%h - %an, %ar : %s'
+    ll = log --graph --oneline --decorate --no-merges --name-status
     lp = log --abbrev-commit --date=relative -p --follow
     la = !git l --all
     ss = submodule status
