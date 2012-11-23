@@ -33,12 +33,15 @@ if [[ -s ~/.rvm/scripts/rvm ]] ; then
   rvm-prompt
 fi
 
+# homedir
+export PATH=$PATH:~/bin:~/.homedir/bin
+
 # platform specific
 OS=${OSTYPE//[0-9.]/}
-export PATH=$PATH:~/.homedir/bin/_${OS}:~/bin
 PLATFORM_PROFILE=~/.profile.${OS}
 if [ -f "$PLATFORM_PROFILE" ]; then
   source $PLATFORM_PROFILE
+  export PATH=$PATH:~/.homedir/bin/_${OS}
 fi
 
 # git

@@ -1,16 +1,6 @@
 #!/bin/sh
 
-# SITE=tcurdt@vserver-us
-# 
-# rsync -rtlzv --delete --ignore-errors --exclude "lost+found" --stats --progress \
-#         $SITE:/home/tcurdt/ \
-#         $HOME/Backup/slicehost/home/tcurdt/
-# 
-# rsync -rtlzv --delete --ignore-errors --exclude "lost+found" --stats --progress \
-#         $SITE:/var/www/ \
-#         $HOME/Backup/slicehost/var/www/
-
-SITE=tcurdt@vserver-de
+SITE=tcurdt@vserver
 
 rsync -rtlzv --delete --ignore-errors --exclude "lost+found" --stats --progress \
         --exclude "src" \
