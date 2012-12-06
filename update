@@ -10,6 +10,8 @@ ignore = Set.new([
   '.git',
   '.adobe',
   '.bash_history',
+  '.sudo_as_admin_successful',
+  '.bash_logout',
   '.CFUserTextEncoding',
   '.cups',
   '.dropbox',
@@ -40,12 +42,13 @@ if unknown.length > 0
   unknown.each do |f|
     puts " #{f}"
   end
-  # exit 1
+  exit 1
 end
 
 installed = dst & src
 install = src - dst
 
+error = 0
 (installed + install).each do |f|
   src_path = Pathname.new(here + "/#{f}")
   dst_path = Pathname.new("#{ENV['HOME']}/#{f}")
@@ -55,6 +58,7 @@ install = src - dst
     else
       # need to be handled
       puts "existing #{f}"
+      error = 2
       # puts "diff #{src_path.realpath} #{dst_path.realpath}"
     end
   else
@@ -64,4 +68,4 @@ install = src - dst
   end
 end
 
-exit 0
+exit error
