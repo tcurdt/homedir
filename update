@@ -24,8 +24,13 @@ ignore = Set.new([
   '.ssh',
   '.rbenv',
   '.lesshst',
+  '.npm',
+  '.subversion',
 ])
-src = Set.new(Dir[".*"].map { |f| File.basename(f) }) - ignore
+
+here = ENV['HOME'] + "/.homedir"
+
+src = Set.new(Dir[here + "/.*"].map { |f| File.basename(f) }) - ignore
 dst = Set.new(Dir[ENV['HOME'] + "/.*"].map { |f| File.basename(f) }) - ignore
 
 unknown = dst - src
@@ -42,7 +47,7 @@ installed = dst & src
 install = src - dst
 
 (installed + install).each do |f|
-  src_path = Pathname.new("./#{f}")
+  src_path = Pathname.new(here + "/#{f}")
   dst_path = Pathname.new("#{ENV['HOME']}/#{f}")
   if dst_path.exist?
     if dst_path.symlink?
