@@ -14,15 +14,20 @@ OPTIONS:
 EOF
 }
 
+default_app()
+{
+  URL=`git config --get remote.origin.url`
+  REPO=`basename $URL .git`
+  if [ $REPO ]; then
+    echo $REPO
+  else
+    basename `pwd`
+  fi
+}
 
-# APP=feedbackreporter
-# GIT=git@github.com:tcurdt/feedbackreporter.git
-# DIR=Server/nodejs
-# REV="HEAD"
-
-APP=feedbackreporter
-GIT= # git@github.com:tcurdt/feedbackreporter.git
-DIR= # Server/nodejs
+APP=`default_app`
+GIT=
+DIR=
 REV="HEAD"
 
 while getopts "hr:d:a:t:" OPTION; do
@@ -52,10 +57,12 @@ done
 shift $(($OPTIND - 1))
 SERVER=$1
 
-# if [[ -z $APP ]] || [[ -z $REV ]]; then
-#   usage
-#   exit 1
-# fi
+if [[ -z $APP ]]; then
+  echo "+- you need to provide the app name"
+  echo "ERROR"
+  exit 7
+fi
+
 
 ssh $SERVER 'sudo sh -s' <<SCRIPT
 #!/usr/bin/env bash
