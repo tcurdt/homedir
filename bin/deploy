@@ -3,7 +3,7 @@
 usage()
 {
 cat << EOF
-usage: $0 -a application -t version -r repository server
+usage: `basename $0` -a application -t version -r repository server
 
 OPTIONS:
    -h      show this message
@@ -20,9 +20,9 @@ EOF
 # DIR=Server/nodejs
 # REV="HEAD"
 
-APP=
-GIT=
-DIR=""
+APP=feedbackreporter
+GIT=git@github.com:tcurdt/feedbackreporter.git
+DIR=Server/nodejs
 REV="HEAD"
 
 while getopts "hr:d:a:t:" OPTION; do
@@ -52,18 +52,19 @@ done
 shift $(($OPTIND - 1))
 SERVER=$1
 
-# if [[ -z $SOURCE ]] || [[ -z $DESTINATION ]] || [[ -z $DIR ]]; then
-#   usage
-#   exit 1
-# fi
+if [[ -z $GIT ]] || [[ -z $DIR ]] || [[ -z $APP ]] || [[ -z $REV ]]; then
+  usage
+  exit 1
+fi
 
 ssh $SERVER 'sudo sh -s' <<SCRIPT
 #!/usr/bin/env bash
+# set -x
 
-APP=feedbackreporter
-GIT=git@github.com:tcurdt/feedbackreporter.git
-DIR=Server/nodejs
-REV="HEAD"
+APP=$APP
+GIT=$GIT
+DIR=$DIR
+REV=$REV
 
 # input above
 
@@ -138,7 +139,7 @@ ROOT=\`readlink -f /var/*/\$APP\`
       exit 4
     ) &&
     (
-      if [ -x /sbin/initctl && \`initctl status $APP | grep process\` ]; then
+      if [ -x /sbin/initctl -a \`initctl status $APP | grep process\` ]; then
         echo "|- restarting \$APP"
         restart \$APP 1>/dev/null
       fi

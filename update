@@ -28,6 +28,11 @@ ignore = Set.new([
   '.lesshst',
   '.npm',
   '.subversion',
+  '.buchen',
+  '.irb_history',
+  '.twitter.json',
+  '.viminfo',
+  '.vagrant.d'
 ])
 
 here = ENV['HOME'] + "/.homedir"
