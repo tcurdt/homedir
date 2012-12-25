@@ -8,7 +8,7 @@ usage: `basename $0` -a application -t version -r repository server
 OPTIONS:
    -h      show this message
    -r      url to repository
-   -d      base dir into the repo
+   -d      home dir into the repo
    -a      application
    -t      tag or sha
 EOF
@@ -21,8 +21,8 @@ EOF
 # REV="HEAD"
 
 APP=feedbackreporter
-GIT=git@github.com:tcurdt/feedbackreporter.git
-DIR=Server/nodejs
+GIT= # git@github.com:tcurdt/feedbackreporter.git
+DIR= # Server/nodejs
 REV="HEAD"
 
 while getopts "hr:d:a:t:" OPTION; do
@@ -52,10 +52,10 @@ done
 shift $(($OPTIND - 1))
 SERVER=$1
 
-if [[ -z $GIT ]] || [[ -z $DIR ]] || [[ -z $APP ]] || [[ -z $REV ]]; then
-  usage
-  exit 1
-fi
+# if [[ -z $APP ]] || [[ -z $REV ]]; then
+#   usage
+#   exit 1
+# fi
 
 ssh $SERVER 'sudo sh -s' <<SCRIPT
 #!/usr/bin/env bash
@@ -66,9 +66,20 @@ GIT=$GIT
 DIR=$DIR
 REV=$REV
 
-# input above
-
 ROOT=\`readlink -f /var/*/\$APP\`
+
+if [ \$DIR ]; then
+  cd \$ROOT && ln -sfn "checkout/\$DIR" home.new && mv -fT home.new home
+else
+  if [ -L \$ROOT/home ]; then
+    DIR=\`readlink \$ROOT/home\`
+    DIR=\${DIR#*/}
+  else
+    echo "+- you need to provide the home dir"
+    echo "ERROR"
+    exit 6
+  fi
+fi
 
 (
   mkdir -p \$ROOT
@@ -76,8 +87,14 @@ ROOT=\`readlink -f /var/*/\$APP\`
     echo "|- updating repository"
     ( cd \$ROOT/checkout && git clean -f -d && git checkout . && git pull ) 1>/dev/null
   else
-    echo "|- cloning repository"
-    ( cd \$ROOT && git clone \$GIT checkout ) 1>/dev/null
+    if [ \$GIT ]; then
+      echo "|- cloning repository"
+      ( cd \$ROOT && git clone \$GIT checkout ) 1>/dev/null
+    else
+      echo "+- you need to provide the git repo"
+      echo "ERROR"
+      exit 7
+    fi
   fi
 ) ||
 (
