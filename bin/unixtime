@@ -8,6 +8,7 @@ def usage
 end
 
 def date(s)
+  return DateTime.now if s == "now"
   [ '%Y-%m-%d', '%m/%d/%Y', '%m/%d/%Y %I:%M %p' ].each do |format|
     begin
       return DateTime.strptime(s, format) #.strftime('%Y%m%d')
