@@ -1,0 +1,158 @@
+#!/bin/bash
+
+usage()
+{
+cat << EOF
+usage: $0 -a application -t version -r repository server
+
+OPTIONS:
+   -h      show this message
+   -r      url to repository
+   -d      base dir into the repo
+   -a      application
+   -t      tag or sha
+EOF
+}
+
+
+# APP=feedbackreporter
+# GIT=git@github.com:tcurdt/feedbackreporter.git
+# DIR=Server/nodejs
+# REV="HEAD"
+
+APP=
+GIT=
+DIR=""
+REV="HEAD"
+
+while getopts "hr:d:a:t:" OPTION; do
+  case $OPTION in
+    h)
+      usage
+      exit 1
+      ;;
+    r)
+      GIT=$OPTARG
+      ;;
+    d)
+      DIR=$OPTARG
+      ;;
+    a)
+      APP=$OPTARG
+      ;;
+    t)
+      REV=$OPTARG
+      ;;
+    ?)
+      usage
+      exit
+    ;;
+  esac
+done
+shift $(($OPTIND - 1))
+SERVER=$1
+
+# if [[ -z $SOURCE ]] || [[ -z $DESTINATION ]] || [[ -z $DIR ]]; then
+#   usage
+#   exit 1
+# fi
+
+ssh $SERVER 'sudo sh -s' <<SCRIPT
+#!/usr/bin/env bash
+
+APP=feedbackreporter
+GIT=git@github.com:tcurdt/feedbackreporter.git
+DIR=Server/nodejs
+REV="HEAD"
+
+# input above
+
+ROOT=\`readlink -f /var/*/\$APP\`
+
+(
+  mkdir -p \$ROOT
+  if [ -d \$ROOT/checkout ]; then
+    echo "|- updating repository"
+    ( cd \$ROOT/checkout && git clean -f -d && git checkout . && git pull ) 1>/dev/null
+  else
+    echo "|- cloning repository"
+    ( cd \$ROOT && git clone \$GIT checkout ) 1>/dev/null
+  fi
+) ||
+(
+  echo "+- failed to update repository"
+  echo "ERROR"
+  exit 1
+) &&
+(
+  LINK=\`readlink \$ROOT/current\`
+  OLDVERSION=\`basename \$LINK 2>/dev/null || echo ""\`
+  cd \$ROOT/checkout
+  REVISION=\`git rev-parse --short \$REV\`
+  TIMESTAMP=\`date +%Y-%m-%d-%H:%M:%S\`
+  NEWVERSION="\$TIMESTAMP-\$REVISION"
+  BUILD="/tmp/build-\$NEWVERSION-\$RANDOM"
+
+  (
+    echo "|- preparing new version"
+    mkdir -p \$BUILD && git archive --format=tar \$REVISION:\$DIR | (cd \$BUILD && tar xf -) &&
+    (
+      cd \$BUILD
+      if [ -e 'package.json' ]; then
+        echo "|- running npm"
+        npm install
+      fi
+    ) &&
+    (
+      cd \$BUILD
+      if [ -e 'Gemfile' ]; then
+        echo "|- running bundler"
+        bundle install
+      fi
+    ) &&
+    (
+      echo "|- moving version in place"
+      mkdir -p \$ROOT/versions && mv \$BUILD \$ROOT/versions/\$NEWVERSION
+    ) ||
+    (
+      echo "|- failed to prepare new version"
+      exit 2
+    ) 
+  ) ||
+  (
+    if [ -d \$BUILD ]; then
+      rm -rf \$BUILD
+      echo "+- removing \$BUILD"
+    fi
+    echo "ERROR"
+    exit 3
+  ) &&
+  (
+    (
+      echo "|- switching from version \$OLDVERSION to \$NEWVERSION"
+      cd \$ROOT && ln -sfn "versions/\$NEWVERSION" current.new && mv -fT current.new current
+    ) ||
+    (
+      echo "+- failed to link new version"
+      echo "ERROR"
+      exit 4
+    ) &&
+    (
+      if [ -x /sbin/initctl && \`initctl status $APP | grep process\` ]; then
+        echo "|- restarting \$APP"
+        restart \$APP 1>/dev/null
+      fi
+    ) ||
+    (
+      echo "+- failed to restart \$APP"
+      echo "ERROR"
+      exit 5
+    ) &&
+    (
+      echo "+- deployed \$NEWVERSION"
+      echo "SUCCESS"
+      exit 0
+    )
+  )
+)
+SCRIPT

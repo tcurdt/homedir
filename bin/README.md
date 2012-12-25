@@ -12,10 +12,6 @@ Goes trough png, js, css and html files minimized them and also creates a gzip'e
 
 Shows differences between jars
 
-## jdk
-
-Let's you switch OSX jdks easily.
-
 ## mvn-release
 
 After wasting way too much time with the maven release plugin I came up with this little script that does things the way I want it. If you use maven, git(hub) and OSX you might want to have a look whether this fits your bill as well. Features are:
@@ -45,7 +41,7 @@ This gets more interesting if you want to split text files on their line boundar
 
 While "split-file" still splits on file size it honors the line boundaries. This means the exact number of lines still may be different per file but you end up with similar sized file.
 
-## lines-random
+## lines-sample
 
 Ever wanted to x random lines out of 10GB text file? Most of the usual approaches fail short when files get too big. This script is efficient also on large files.
 

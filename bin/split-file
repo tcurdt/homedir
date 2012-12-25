@@ -29,7 +29,7 @@ options.each do |option|
   when '-v'
     verbose = true
   when '-h'
-    usage()    
+    usage()
   end
 end
 
