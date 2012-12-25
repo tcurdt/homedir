@@ -3,6 +3,7 @@ require "rubygems"
 require "twitter"
 require 'tempfile'
 require 'time'
+require 'json'
 
 def since_id(filename)
   if File.exists?(filename)
@@ -16,6 +17,15 @@ end
 
 userid = ARGV[0] || 'tcurdt'
 filename = ARGV[1] || File.expand_path('~/Backup/twitter.tsv')
+
+dict = JSON.parse(IO.read(File.expand_path('~/.twitter.json')))
+
+Twitter.configure do |config|
+  config.consumer_key = dict["consumer_key"]
+  config.consumer_secret = dict["consumer_secret"]
+  config.oauth_token = dict["oauth_token"]
+  config.oauth_token_secret = dict["oauth_token_secret"]
+end
 
 puts "writing to #{filename}"
 
