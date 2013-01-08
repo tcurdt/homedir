@@ -36,3 +36,4 @@ export ANT_HOME=~/Library/Java/ant
 
 
 alias pastebin='pbpaste | gist | pbcopy'
+alias git=hub
