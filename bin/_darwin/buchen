@@ -406,8 +406,8 @@ records(ARGV) do |record|
   months[month] = true
 end
 
-if years.size != 1 || months.size != 1
-  $stderr.puts "Not just a month"
+if years.size > 2 || months.size > 2
+  $stderr.puts "Not just a month y:#{years}, m:#{months}"
 else
   year = years.first.first.to_i
   month = months.first.first.to_i
