@@ -75,7 +75,7 @@ SIGNATURES=""
 for A in $SIGN ; do
     echo "Signing $A"
     rm $A.asc 2>/dev/null || true
-    gpg --armor --output $A.asc --detach-sig $A
+    gpg --armor --output $A.asc --detach-sig $A || ( echo "Failed to sign $A" && exit 1 )
     # openssl md5 < $A.asc > $A.asc.md5
     # openssl sha1 < $A.asc > $A.asc.sha1
     SIGNATURES="$SIGNATURES $A.asc"
@@ -86,6 +86,7 @@ jar -cf $NAME-$VERSION-bundle.jar $SIGN $SIGNATURES
   
 echo "Uploading $NAME-$VERSION-bundle.jar to oss.sonatype.org..."
 
+# add with `security add-internet-password -s oss.sonatype.org -U -T "" -a account -w secret`
 ACCOUNT=`security find-internet-password -s oss.sonatype.org -g 2>&1 | grep acct | sed 's/.*=\"\(.*\)\"/\1/'`
 PASSWORD=`security find-internet-password -s oss.sonatype.org -g 2>&1 | grep password | sed 's/password: \"\(.*\)\"/\1/'`
 
