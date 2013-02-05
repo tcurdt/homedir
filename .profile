@@ -20,12 +20,17 @@ export HISTIGNORE="pwd:ls:cd:exit"
 export HISTCONTROL=ignoredups
 shopt -s histappend
 
+#export RBENV_ROOT=/usr/local/rbenv
+#export PATH="$RBENV_ROOT/bin:$PATH"
+#export GEM_HOME=$HOME/.gem
+#export GEM_PATH=$HOME/.gem
+
 # rbenv
-if [[ -s $HOME/.rbenv/bin ]] ; then
+#if [[ -s $HOME/.rbenv/bin ]] ; then
   export PATH="$HOME/.rbenv/bin:$PATH"
   eval "$(rbenv init -)"
   alias b='bundle exec'
-fi
+#fi
 
 # rvm
 if [[ -s ~/.rvm/scripts/rvm ]] ; then
