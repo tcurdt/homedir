@@ -1,4 +1,10 @@
 #!/bin/sh
-SIZE=1024
-BLOCKSIZE=`expr 1024 "*" 2048`
+
+if [ "$1" != "" ]; then
+  SIZE="$1"
+else
+  SIZE="1024*1024*1024" # 1GB
+fi
+
+BLOCKSIZE=`echo "$SIZE / 512" | bc`
 diskutil erasevolume HFS+ "ramdisk" `hdiutil attach -nomount ram://$BLOCKSIZE`

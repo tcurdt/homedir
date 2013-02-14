@@ -1,24 +1,30 @@
 #!/bin/sh
 
-set -e
-
 APPCAST=$1
 TMP=/tmp
 
+if [ -z "$APPCAST" ]; then
+  echo "Usage: sparkle-verify <appcast url>"
+  exit 1
+fi
+
+set -e
+
+echo "Downloading appcast from $APPCAST"
 curl -s "$APPCAST" -o - > $TMP/appcast.xml
 
 LATEST_URL=`cat $TMP/appcast.xml | ruby -n -e '$_.scan(/url=\"([^\"]+)\"/) { |match| print match[0], "\n" }' | tail -1`
 LATEST_SIG=`cat $TMP/appcast.xml | ruby -n -e '$_.scan(/sparkle\:dsaSignature=\"([^\"]+)\"/) { |match| print match[0], "\n" }' | tail -1`
 
-echo "Downloading $LATEST_URL ($LATEST_SIG)"
+# openssl dgst -sha1 -binary < $1 | openssl dgst -dss1 -sign dsa_priv.pem > /tmp/sig.bin
+echo $LATEST_SIG | openssl enc -base64 -d > $TMP/sig.bin
 
+echo "Downloading latest update $LATEST_URL ($LATEST_SIG)"
 curl -s "$LATEST_URL" -o - > $TMP/project.zip
 
 PEM_IN_ZIP=`unzip -l $TMP/project.zip | grep .pem | awk '{print $4}'`
-
 echo "Found public key at $PEM_IN_ZIP"
-
 unzip -p $TMP/project.zip $PEM_IN_ZIP > $TMP/dsa_pub.pem
-# openssl dgst -sha1 -binary < $1 | openssl dgst -dss1 -sign dsa_priv.pem > /tmp/sig.bin
-echo $LATEST_SIG | openssl enc -base64 -d > $TMP/sig.bin
+
+echo "Verifying signature"
 openssl dgst -sha1 -binary < $TMP/project.zip | openssl dgst -dss1 -verify $TMP/dsa_pub.pem -signature $TMP/sig.bin

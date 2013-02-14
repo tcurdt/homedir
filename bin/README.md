@@ -44,31 +44,3 @@ While "split-file" still splits on file size it honors the line boundaries. This
 ## lines-sample
 
 Ever wanted to x random lines out of 10GB text file? Most of the usual approaches fail short when files get too big. This script is efficient also on large files.
-
-## sparkle-generate-keys
-
-Generate the keys for sparkle.
-
-## sparkle-sign
-
-Sign a release.
-
-## sparkle-verify
-
-Download the last release and verify it.
-
-## split-dir
-
-Split files across directories.
-
-## sync-media
-
-Sync local disk with server.
-
-## watch-apple-store
-
-The Apple store is down and you have better things to do than hitting reload and waiting. This script watches the website for you and sends you a growl notification once the store is back.
-
-## xcode-release
-
-My script to release Mac projects

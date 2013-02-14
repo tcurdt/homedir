@@ -1,0 +1,102 @@
+#!/bin/bash
+# gem install terminal-notifier
+
+SDK="iphoneos6.1" # iphonesimulator6.1
+CONFIGURATION_NAME="Release" # Ad Hoc
+DISTRIBUTION_LISTS="PM, QA, Beta"
+CODE_SIGN_IDENTITY="iPhone Developer"
+NOTES="Built by $USER@`hostname`"
+PLISTBUDDY=/usr/libexec/PlistBuddy
+DIR="`pwd`/build"
+
+rm -rf $DIR
+mkdir -p $DIR
+
+if [ "`git status | grep 'working directory clean'`" = "" ]; then
+  echo "There are local modifications. Please commit everything for a release."
+  exit 1
+fi
+
+TEAM_TOKEN=`security find-internet-password -s testflightapp.com -a ${USER}_TEAM -g 2>&1 | grep password | sed 's/password: \"\(.*\)\"/\1/'`
+if [ -z TEAM_TOKEN ]; then
+  echo "Please add TEAM token to keychain with 'security add-internet-password -s testflightapp.com -U -T "" -a ${USER}_TEAM -w <TOKEN>'"
+  exit 1
+fi
+
+API_TOKEN=`security find-internet-password -s testflightapp.com -a ${USER}_API -g 2>&1 | grep password | sed 's/password: \"\(.*\)\"/\1/'`
+if [ -z API_TOKEN ]; then
+  echo "Please add API token to keychain with 'security add-internet-password -s testflightapp.com -U -T "" -a ${USER}_API  -w <TOKEN>'"
+  exit 1
+fi
+
+if [ -f "Podfile" ]; then
+  echo "Installing cocoapods"
+  pod install 2>&1 > $DIR/cocoapods.log
+  if [ $? != 0 ]; then
+    echo "Failed to install cocoapods"
+    exit 1
+  fi
+fi
+
+for WORKSPACE in *.xcworkspace; do
+  WORKSPACE_NAME=`basename $WORKSPACE .xcworkspace`
+  echo "Building workspace $WORKSPACE_NAME"
+
+  PROVISIONING_PROFILE="$WORKSPACE_NAME.mobileprovision"
+  if [ ! -f "$PROVISIONING_PROFILE" ]; then
+    echo "Could not find provisioning profile $PROVISIONING_PROFILE"
+    exit 1
+  fi
+
+  xcodebuild \
+    -workspace "${WORKSPACE_NAME}.xcworkspace" \
+    -scheme App \
+    -configuration "$CONFIGURATION_NAME" \
+    -sdk $SDK \
+    clean build \
+    DSTROOT="$DIR" \
+    DEPLOYMENT_LOCATION=YES \
+    DWARF_DSYM_FOLDER_PATH="$DIR" \
+    2>&1 > $DIR/build.log
+  if [ $? != 0 ]; then
+    echo "Failed to build workspace. See build.log for details."
+    exit 1
+  fi
+
+  for APP in $DIR/Applications/*.app; do
+    APP_NAME=`basename $APP .app`
+
+    PLIST="$APP/Info.plist"
+    APP_VERSION="`$PLISTBUDDY -c "Print CFBundleShortVersionString" $PLIST`"
+    APP_BUILD="`$PLISTBUDDY -c "Print CFBundleVersion" $PLIST`"
+    APP_REVISION="`$PLISTBUDDY -c "Print CFBundleGetInfoString" $PLIST`"
+
+    echo "Packaging $APP_NAME $APP_VERSION build $APP_BUILD ($APP_REVISION)"
+    zip -r --quiet "$DIR/${APP_NAME}.app.dSYM.zip" "$DIR/${APP_NAME}.app.dSYM"
+
+    echo "Archiving dSYM"
+
+    echo "Creating ipa"
+    xcrun -sdk $SDK PackageApplication \
+      "$APP" \
+      -o "$DIR/$APP_NAME.ipa" \
+      --sign "$CODE_SIGN_IDENTITY" \
+      --embed "$PROVISIONING_PROFILE" \
+      -v \
+      2>&1 > $DIR/package.log
+
+    echo "Uploading ipa and dSYM"
+    curl "http://testflightapp.com/api/builds.json" \
+        -F file=@"$DIR/${APP_NAME}.ipa" \
+        -F dsym=@"$DIR/${APP_NAME}.app.dSYM.zip" \
+        -F api_token="$API_TOKEN" \
+        -F team_token="$TEAM_TOKEN" \
+        -F notes="$NOTES" \
+        -F notify=True \
+        -F distribution_lists="$DISTRIBUTION_LISTS"
+
+  done
+
+done
+
+open "https://testflightapp.com/dashboard/builds/"
