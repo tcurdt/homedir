@@ -1,6 +1,7 @@
 export LESSOPEN='| lesspipe.sh %s'
 
 #export EDITOR='mate -w'
+#export EDITOR='subl -wait'
 #export EDITOR='mvim -f -c "au VimLeave * !open -a Terminal"'
 export EDITOR='vim'
 
