@@ -1,3 +1,5 @@
+.SyncID
+.SyncIgnore
 .DS_Store
 .classpath
 .project

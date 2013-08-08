@@ -48,7 +48,7 @@
 
     l  = log --graph --decorate --no-merges --pretty=format:'%h - %an, %ar : %s'
     ll = log --graph --oneline --decorate --no-merges --name-status
-    lp = log --abbrev-commit --date=relative -p --follow
+    lp = log --abbrev-commit --date=relative -p
     la = !git l --all
 
     ss = submodule status

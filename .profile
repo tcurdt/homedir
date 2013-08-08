@@ -59,6 +59,7 @@ if [ -x /usr/bin/dircolors ]; then
   alias ls='ls --color=auto'
 fi
 
+alias recent="git show --pretty='format:' --name-only HEAD | xargs $EDITOR"
 
 # if [[ "$PS1" &&; "${STARTED_SCREEN:-No}" = No && "${SSH_TTY:-No}" != No ]]; then
 # STARTED_SCREEN=1 ; export STARTED_SCREEN

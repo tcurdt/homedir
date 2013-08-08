@@ -1,0 +1,5 @@
+#!/bin/sh
+
+PATH="$1"
+
+find $PATH -name '*.png' -exec basename {} ".png" \; | xargs -L1 -I XX gm convert -quality 90% XX.png XX.jpg

@@ -3,8 +3,11 @@
 
 SDK="iphoneos6.1" # iphonesimulator6.1
 CONFIGURATION_NAME="Release" # Ad Hoc
-DISTRIBUTION_LISTS="PM, QA, Beta"
-CODE_SIGN_IDENTITY="iPhone Developer"
+DISTRIBUTION_LISTS="Beta"
+# DISTRIBUTION_LISTS="PM, QA, Beta"
+# CODE_SIGN_IDENTITY="iPhone Developer"
+# CODE_SIGN_IDENTITY="iPhone Developer: Torsten Curdt (S82JP7A9WZ)" # hazelfin
+CODE_SIGN_IDENTITY="iPhone Developer: Torsten Curdt (DCYPLGJK8J)" # gilt
 NOTES="Built by $USER@`hostname`"
 PLISTBUDDY=/usr/libexec/PlistBuddy
 DIR="`pwd`/build"
@@ -17,15 +20,9 @@ if [ "`git status | grep 'working directory clean'`" = "" ]; then
   exit 1
 fi
 
-TEAM_TOKEN=`security find-internet-password -s testflightapp.com -a ${USER}_TEAM -g 2>&1 | grep password | sed 's/password: \"\(.*\)\"/\1/'`
-if [ -z TEAM_TOKEN ]; then
-  echo "Please add TEAM token to keychain with 'security add-internet-password -s testflightapp.com -U -T "" -a ${USER}_TEAM -w <TOKEN>'"
-  exit 1
-fi
-
-API_TOKEN=`security find-internet-password -s testflightapp.com -a ${USER}_API -g 2>&1 | grep password | sed 's/password: \"\(.*\)\"/\1/'`
-if [ -z API_TOKEN ]; then
-  echo "Please add API token to keychain with 'security add-internet-password -s testflightapp.com -U -T "" -a ${USER}_API  -w <TOKEN>'"
+API_TOKEN=`security find-internet-password -s testflightapp.com -a API_${USER} -g 2>&1 | grep password | sed 's/password: \"\(.*\)\"/\1/'`
+if [ -z "$API_TOKEN" ]; then
+  echo "Please add API token to keychain with 'security add-internet-password -s testflightapp.com -U -T \"\" -a API_${USER}  -w <TOKEN>'"
   exit 1
 fi
 
@@ -67,9 +64,16 @@ for WORKSPACE in *.xcworkspace; do
     APP_NAME=`basename $APP .app`
 
     PLIST="$APP/Info.plist"
+    APP_BUNDLEID="`$PLISTBUDDY -c "Print CFBundleIdentifier" $PLIST`"
     APP_VERSION="`$PLISTBUDDY -c "Print CFBundleShortVersionString" $PLIST`"
     APP_BUILD="`$PLISTBUDDY -c "Print CFBundleVersion" $PLIST`"
     APP_REVISION="`$PLISTBUDDY -c "Print CFBundleGetInfoString" $PLIST`"
+
+    TEAM_TOKEN=`security find-internet-password -s testflightapp.com -a TEAM_${APP_BUNDLEID} -g 2>&1 | grep password | sed 's/password: \"\(.*\)\"/\1/'`
+    if [ -z "$TEAM_TOKEN" ]; then
+      echo "Please add TEAM token to keychain with 'security add-internet-password -s testflightapp.com -U -T \"\" -a TEAM_${APP_BUNDLEID} -w <TOKEN>'"
+      exit 2
+    fi
 
     echo "Packaging $APP_NAME $APP_VERSION build $APP_BUILD ($APP_REVISION)"
     zip -r --quiet "$DIR/${APP_NAME}.app.dSYM.zip" "$DIR/${APP_NAME}.app.dSYM"

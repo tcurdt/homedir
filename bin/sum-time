@@ -1,0 +1,13 @@
+#!/usr/bin/env ruby
+
+s = 0
+STDIN.lines do |line|
+  columns = line.split(/(\d+)/).keep_if { |v| v =~ /\d+/ }
+  f = 1
+  columns.reverse_each do |cell|
+    v = cell.to_i
+    s += f * v
+    f *= 60
+  end
+end
+puts "#{(s/60).to_i}:#{(s % 60)}"

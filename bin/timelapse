@@ -1,0 +1,12 @@
+#!/bin/sh
+
+if [ test -d sequence ]; then
+	mkdir sequence || exit 1
+	find $* -type f -print | awk '{ printf("mv '%s' 'sequence/GOPRO%05d.JPG'\n", $0, FNR) }' | sh
+fi
+
+ffmpeg -i sequence/GOPRO%05d.JPG \
+ -r 25 \
+ -s 1920x1080 \
+ -vcodec libx264 -vb 6000k \
+ timelapse.mp4
