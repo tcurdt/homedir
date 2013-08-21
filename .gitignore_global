@@ -4,6 +4,7 @@
 .classpath
 .project
 .settings
+.testflight
 target
 eclipse
 build
@@ -22,6 +23,7 @@ _tmp
 *.perspectivev3
 project.xcworkspace
 xcuserdata
+xcshareddata
 dsa_priv.pem
 
 *~

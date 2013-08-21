@@ -1,13 +1,34 @@
 #!/bin/bash
 # gem install terminal-notifier
 
-SDK="iphoneos6.1" # iphonesimulator6.1
-CONFIGURATION_NAME="Release" # Ad Hoc
-DISTRIBUTION_LISTS="Beta"
-# DISTRIBUTION_LISTS="PM, QA, Beta"
-# CODE_SIGN_IDENTITY="iPhone Developer"
-# CODE_SIGN_IDENTITY="iPhone Developer: Torsten Curdt (S82JP7A9WZ)" # hazelfin
-CODE_SIGN_IDENTITY="iPhone Developer: Torsten Curdt (DCYPLGJK8J)" # gilt
+CONFIG=".testflight"
+if [ -f "$CONFIG" ]; then
+  source "$CONFIG"
+else
+  echo "Cannot find $CONFIG file."
+  exit 1
+fi
+
+if [ -z "SDK" ]; then
+  echo 'SDK=? # "iphoneos6.1" or "iphonesimulator6.1"'
+  exit 1
+fi
+
+if [ -z "CONFIGURATION_NAME" ]; then
+  echo 'CONFIGURATION_NAME=? # "Release" or "Ad Hoc"'
+  exit 1
+fi
+
+if [ -z "DISTRIBUTION_LISTS" ]; then
+  echo 'DISTRIBUTION_LISTS=? # "PM, QA, Beta"'
+  exit 1
+fi
+
+if [ -z "CODE_SIGN_IDENTITY" ]; then
+  echo 'CODE_SIGN_IDENTITY=? # "iPhone Developer" or "iPhone Developer: Torsten Curdt (S82JP7A9WZ)"'
+  exit 1
+fi
+
 NOTES="Built by $USER@`hostname`"
 PLISTBUDDY=/usr/libexec/PlistBuddy
 DIR="`pwd`/build"
