@@ -224,8 +224,14 @@ class DkbGiro
         # 5 "Kontonummer";
         # 6 "BLZ";
         # 7 "Betrag (EUR)";
+        date = row[1]
+        day = date[0,2]
+        month = date[3,2]
+        year = date[6,4]
+        year = "20#{year}" if (year.to_i < 2000)
+
         record = {
-          :date  => row[1],
+          :date  => "#{day}.#{month}.#{year}",
           :value => row[7].gsub(/\./,'').gsub(/,/,'.').to_f,
           :text  => row[3].encode('utf-8') + ' ' + row[4].encode('utf-8'),
           :account  => 'dkb_giro',
@@ -414,6 +420,8 @@ else
 
   db_path = $paths['db'] % [ year, month ]
   csv_path = $paths['csv'] % [ year, month ]
+
+  puts "db: #{db_path}"
 
   db = Database.new(db_path)
 
