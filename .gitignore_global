@@ -1,4 +1,5 @@
 .SyncID
+.SyncArchive
 .SyncIgnore
 .DS_Store
 .classpath
