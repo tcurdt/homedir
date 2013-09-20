@@ -65,6 +65,8 @@ for WORKSPACE in *.xcworkspace; do
     echo "Could not find provisioning profile $PROVISIONING_PROFILE"
     exit 1
   fi
+  security cms -D -i $PROVISIONING_PROFILE > $DIR/profile.plist
+  PROVISIONING_PROFILE_UUID="`$PLISTBUDDY -c "Print UUID" $DIR/profile.plist`"
 
   xcodebuild \
     -workspace "${WORKSPACE_NAME}.xcworkspace" \
@@ -73,6 +75,8 @@ for WORKSPACE in *.xcworkspace; do
     -sdk $SDK \
     clean build \
     DSTROOT="$DIR" \
+    CODE_SIGN_IDENTITY="$CODE_SIGN_IDENTITY" \
+    PROVISIONING_PROFILE="$PROVISIONING_PROFILE_UUID" \
     DEPLOYMENT_LOCATION=YES \
     DWARF_DSYM_FOLDER_PATH="$DIR" \
     2>&1 > $DIR/build.log
@@ -101,7 +105,7 @@ for WORKSPACE in *.xcworkspace; do
 
     # echo "Archiving dSYM"
 
-    echo "Creating ipa as $CODE_SIGN_IDENTITY"
+    echo "Creating ipa as $CODE_SIGN_IDENTITY with profile $PROVISIONING_PROFILE_UUID"
     xcrun -sdk $SDK PackageApplication \
       "$APP" \
       -o "$DIR/$APP_NAME.ipa" \
