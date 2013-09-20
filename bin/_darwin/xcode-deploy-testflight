@@ -10,7 +10,7 @@ else
 fi
 
 if [ -z "SDK" ]; then
-  echo 'SDK=? # "iphoneos6.1" or "iphonesimulator6.1"'
+  echo 'SDK=? # "iphoneos7.0" or "iphonesimulator7.0"'
   exit 1
 fi
 
@@ -96,12 +96,12 @@ for WORKSPACE in *.xcworkspace; do
       exit 2
     fi
 
-    echo "Packaging $APP_NAME $APP_VERSION build $APP_BUILD ($APP_REVISION)"
+    echo "Packaging $APP_BUNDLEID $APP_NAME $APP_VERSION build $APP_BUILD ($APP_REVISION)"
     zip -r --quiet "$DIR/${APP_NAME}.app.dSYM.zip" "$DIR/${APP_NAME}.app.dSYM"
 
-    echo "Archiving dSYM"
+    # echo "Archiving dSYM"
 
-    echo "Creating ipa"
+    echo "Creating ipa as $CODE_SIGN_IDENTITY"
     xcrun -sdk $SDK PackageApplication \
       "$APP" \
       -o "$DIR/$APP_NAME.ipa" \
