@@ -77,7 +77,7 @@
     last = log -1 HEAD
     incoming = log --oneline origin/master ^master
     outgoing = log --oneline master ^origin/master
-    upstream = !sh -c 'git branch --set-upstream `git rev-parse --abbrev-ref HEAD` origin/`git rev-parse --abbrev-ref HEAD`'
+    upstream = !sh -c 'git branch --set-upstream-to `git rev-parse --abbrev-ref HEAD` origin/`git rev-parse --abbrev-ref HEAD`'
     graph = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset' --abbrev-commit --date=relative
     changes = log --oneline --reverse
     rank = shortlog -sn --no-merges

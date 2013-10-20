@@ -9,22 +9,27 @@ else
   exit 1
 fi
 
-if [ -z "SDK" ]; then
+if [ -z "$SDK" ]; then
   echo 'SDK=? # "iphoneos7.0" or "iphonesimulator7.0"'
   exit 1
 fi
 
-if [ -z "CONFIGURATION_NAME" ]; then
+if [ -z "$BUILD" ]; then
+  echo 'BUILD=? # "Hello.xcodeproj" or "Hello.xcworkspace"'
+  exit 1
+fi
+
+if [ -z "$CONFIGURATION_NAME" ]; then
   echo 'CONFIGURATION_NAME=? # "Release" or "Ad Hoc"'
   exit 1
 fi
 
-if [ -z "DISTRIBUTION_LISTS" ]; then
+if [ -z "$DISTRIBUTION_LISTS" ]; then
   echo 'DISTRIBUTION_LISTS=? # "PM, QA, Beta"'
   exit 1
 fi
 
-if [ -z "CODE_SIGN_IDENTITY" ]; then
+if [ -z "$CODE_SIGN_IDENTITY" ]; then
   echo 'CODE_SIGN_IDENTITY=? # "iPhone Developer" or "iPhone Developer: Torsten Curdt (S82JP7A9WZ)"'
   exit 1
 fi
@@ -33,8 +38,8 @@ NOTES="Built by $USER@`hostname`"
 PLISTBUDDY=/usr/libexec/PlistBuddy
 DIR="`pwd`/build"
 
-rm -rf $DIR
-mkdir -p $DIR
+rm -rf "$DIR"
+mkdir -p "$DIR"
 
 if [ "`git status | grep 'working directory clean'`" = "" ]; then
   echo "There are local modifications. Please commit everything for a release."
@@ -56,20 +61,21 @@ if [ -f "Podfile" ]; then
   fi
 fi
 
-for WORKSPACE in *.xcworkspace; do
-  WORKSPACE_NAME=`basename $WORKSPACE .xcworkspace`
-  echo "Building workspace $WORKSPACE_NAME"
+PROJECT_NAME="${BUILD%.*}"
+PROJECT_TYPE="${BUILD##*.}"
 
-  PROVISIONING_PROFILE="$WORKSPACE_NAME.mobileprovision"
-  if [ ! -f "$PROVISIONING_PROFILE" ]; then
-    echo "Could not find provisioning profile $PROVISIONING_PROFILE"
-    exit 1
-  fi
-  security cms -D -i $PROVISIONING_PROFILE > $DIR/profile.plist
-  PROVISIONING_PROFILE_UUID="`$PLISTBUDDY -c "Print UUID" $DIR/profile.plist`"
+PROVISIONING_PROFILE="$PROJECT_NAME.mobileprovision"
+if [ ! -f "$PROVISIONING_PROFILE" ]; then
+  echo "Could not find provisioning profile $PROVISIONING_PROFILE"
+  exit 1
+fi
+security cms -D -i $PROVISIONING_PROFILE > "$DIR/profile.plist"
+PROVISIONING_PROFILE_UUID="`$PLISTBUDDY -c "Print UUID" "$DIR/profile.plist"`"
 
+if [ "$PROJECT_TYPE" = "xcworkspace" ]; then
+  echo "Building workspace $PROJECT_NAME"
   xcodebuild \
-    -workspace "${WORKSPACE_NAME}.xcworkspace" \
+    -workspace "$BUILD" \
     -scheme App \
     -configuration "$CONFIGURATION_NAME" \
     -sdk $SDK \
@@ -79,53 +85,102 @@ for WORKSPACE in *.xcworkspace; do
     PROVISIONING_PROFILE="$PROVISIONING_PROFILE_UUID" \
     DEPLOYMENT_LOCATION=YES \
     DWARF_DSYM_FOLDER_PATH="$DIR" \
-    2>&1 > $DIR/build.log
+    2>&1 > "$DIR/build.log"
   if [ $? != 0 ]; then
     echo "Failed to build workspace. See build.log for details."
     exit 1
   fi
 
-  for APP in $DIR/Applications/*.app; do
-    APP_NAME=`basename $APP .app`
+elif [ "$PROJECT_TYPE" = "xcodeproj" ]; then
+  echo "Building project $PROJECT_NAME"
+  xcodebuild \
+    -project "$BUILD" \
+    -scheme App \
+    -configuration "Testing/Production" \
+    -sdk $SDK \
+    clean build \
+    DSTROOT="$DIR" \
+    CODE_SIGN_IDENTITY="$CODE_SIGN_IDENTITY" \
+    PROVISIONING_PROFILE="$PROVISIONING_PROFILE_UUID" \
+    DEPLOYMENT_LOCATION=YES \
+    DWARF_DSYM_FOLDER_PATH="$DIR" \
+    2>&1 > "$DIR/build.log"
+  if [ $? != 0 ]; then
+    echo "Failed to build workspace. See build.log for details."
+    exit 1
+  fi
 
-    PLIST="$APP/Info.plist"
-    APP_BUNDLEID="`$PLISTBUDDY -c "Print CFBundleIdentifier" $PLIST`"
-    APP_VERSION="`$PLISTBUDDY -c "Print CFBundleShortVersionString" $PLIST`"
-    APP_BUILD="`$PLISTBUDDY -c "Print CFBundleVersion" $PLIST`"
-    APP_REVISION="`$PLISTBUDDY -c "Print CFBundleGetInfoString" $PLIST`"
+else
+  echo "Unknown project type $PROJECT_TYPE"
+  exit 1
+fi
 
-    TEAM_TOKEN=`security find-internet-password -s testflightapp.com -a TEAM_${APP_BUNDLEID} -g 2>&1 | grep password | sed 's/password: \"\(.*\)\"/\1/'`
-    if [ -z "$TEAM_TOKEN" ]; then
-      echo "Please add TEAM token to keychain with 'security add-internet-password -s testflightapp.com -U -T \"\" -a TEAM_${APP_BUNDLEID} -w <TOKEN>'"
-      exit 2
-    fi
+for APP in "$DIR"/Applications/*.app; do
+  APP_NAME=`basename "$APP" .app`
 
-    echo "Packaging $APP_BUNDLEID $APP_NAME $APP_VERSION build $APP_BUILD ($APP_REVISION)"
-    zip -r --quiet "$DIR/${APP_NAME}.app.dSYM.zip" "$DIR/${APP_NAME}.app.dSYM"
+  PLIST="$APP/Info.plist"
 
-    # echo "Archiving dSYM"
+  APP_BUNDLEID="`$PLISTBUDDY -c "Print CFBundleIdentifier" "$PLIST" 2>/dev/null`"
+  if [ $? != 0 ]; then
+    echo "Missing key CFBundleIdentifier"
+    exit 1
+  fi
 
-    echo "Creating ipa as $CODE_SIGN_IDENTITY with profile $PROVISIONING_PROFILE_UUID"
-    xcrun -sdk $SDK PackageApplication \
-      "$APP" \
-      -o "$DIR/$APP_NAME.ipa" \
-      --sign "$CODE_SIGN_IDENTITY" \
-      --embed "$PROVISIONING_PROFILE" \
-      -v \
-      2>&1 > $DIR/package.log
+  APP_VERSION="`$PLISTBUDDY -c "Print CFBundleShortVersionString" "$PLIST" 2>/dev/null`"
+  if [ $? != 0 ]; then
+    echo "Missing key CFBundleShortVersionString"
+    exit 1
+  fi
 
-    echo "Uploading ipa and dSYM"
-    curl "http://testflightapp.com/api/builds.json" \
-        -F file=@"$DIR/${APP_NAME}.ipa" \
-        -F dsym=@"$DIR/${APP_NAME}.app.dSYM.zip" \
-        -F api_token="$API_TOKEN" \
-        -F team_token="$TEAM_TOKEN" \
-        -F notes="$NOTES" \
-        -F notify=True \
-        -F distribution_lists="$DISTRIBUTION_LISTS"
+  APP_BUILD="`$PLISTBUDDY -c "Print CFBundleVersion" "$PLIST" 2>/dev/null`"
+  if [ $? != 0 ]; then
+    echo "Missing key CFBundleVersion"
+    exit 1
+  fi
 
-  done
+  APP_REVISION="`$PLISTBUDDY -c "Print CFBundleGetInfoString" "$PLIST" 2>/dev/null`"
+  if [ $? != 0 ]; then
+    echo "Missing key CFBundleGetInfoString"
+    exit 1
+  fi
+
+  TEAM_TOKEN=`security find-internet-password -s testflightapp.com -a TEAM_${APP_BUNDLEID} -g 2>&1 | grep password | sed 's/password: \"\(.*\)\"/\1/'`
+  if [ -z "$TEAM_TOKEN" ]; then
+    echo "Please add TEAM token to keychain with 'security add-internet-password -s testflightapp.com -U -T \"\" -a TEAM_${APP_BUNDLEID} -w <TOKEN>'"
+    exit 2
+  fi
+
+  echo "Packaging:"
+  echo " bundle:   $APP_BUNDLEID"
+  echo " name:     $APP_NAME"
+  echo " version:  $APP_VERSION"
+  echo " build:    $APP_BUILD"
+  echo " revision: $APP_REVISION"
+  
+  zip -r --quiet "$DIR/${APP_NAME}.app.dSYM.zip" "$DIR/${APP_NAME}.app.dSYM"
+
+  # echo "Archiving dSYM"
+
+  echo "Creating ipa as $CODE_SIGN_IDENTITY with profile $PROVISIONING_PROFILE_UUID"
+  xcrun -sdk $SDK PackageApplication \
+    "$APP" \
+    -o "$DIR/$APP_NAME.ipa" \
+    --sign "$CODE_SIGN_IDENTITY" \
+    --embed "$PROVISIONING_PROFILE" \
+    -v \
+    2>&1 > "$DIR/package.log"
+
+  echo "Uploading ipa and dSYM"
+  curl "http://testflightapp.com/api/builds.json" \
+      -F file=@"$DIR/${APP_NAME}.ipa" \
+      -F dsym=@"$DIR/${APP_NAME}.app.dSYM.zip" \
+      -F api_token="$API_TOKEN" \
+      -F team_token="$TEAM_TOKEN" \
+      -F notes="$NOTES" \
+      -F notify=True \
+      -F distribution_lists="$DISTRIBUTION_LISTS"
 
 done
+
 
 open "https://testflightapp.com/dashboard/builds/"

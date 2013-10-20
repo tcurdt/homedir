@@ -8,6 +8,7 @@ export LANG=en_US
 alias ll='ls -la'
 alias ..='cd ..'
 alias h='history'
+alias t='type -p'
 type curl  >/dev/null 2>&1 && alias download='curl -C - -O'
 type rsync >/dev/null 2>&1 && alias scpresume='rsync --partial --progress --rsh=ssh'
 type pigz  >/dev/null 2>&1 && alias gzip='pigz'

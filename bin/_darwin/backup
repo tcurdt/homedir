@@ -1,0 +1,92 @@
+#!/usr/bin/env ruby
+
+mount_path = "/Volumes"
+
+def backup( source_path, target_path )
+	puts "#{source_path} -> #{target_path}"
+
+	# --bwlimit=KBPS
+	# --delay-updates
+	# --delete --delete-after
+	# --exclude-from="$VOLUME/.syncexclude" \
+
+	cmd = %W(
+		rsync -n -q
+			--recursive
+			--partial
+			--links
+			--keep-dirlinks
+			--perms
+			--owner
+			--group
+			--times
+			--extended-attributes
+			--devices
+			--specials
+			--sparse
+			--one-file-system
+			--compress
+			--size-only
+			--one-file-system
+			--human-readable
+			--stats
+			--exclude=".backup"
+			--exclude=".volume"
+			--exclude=".Trashes"
+			--exclude=".Spotlight-V100"
+			--exclude=".fseventsd"
+			--exclude=".DS_Store"
+			--exclude="._*"
+			--exclude=".Spotlight-*/"
+			--exclude=".Trashes"
+			--exclude="/tmp/*"
+			--exclude="/Network/*"
+			--exclude="/cores/*"
+			--exclude="/afs/*"
+			--exclude="/automount/*"
+			--exclude="/private/tmp/*"
+			--exclude="/private/var/run/*"
+			--exclude="/private/var/spool/postfix/*"
+			--exclude="/private/var/vm/*"
+			--exclude="/Previous Systems.localized"
+			--exclude="/Volumes/*"
+			--exclude="*/.Trash"
+			'#{source_path}/' '#{target_path}/'
+		).join(' ')
+
+	# puts "#{cmd}"
+
+	if system(cmd) and $?.exitstatus == 0 then
+		puts "success"
+	else
+		puts "error"
+	end
+
+end
+
+# map volume id to path
+volumes = {}
+Dir.foreach(mount_path) do |dir|
+	next if dir == '.' or dir == '..'
+	target_path = File.join(mount_path, dir)
+	volume_path = File.join(target_path, ".volume")
+	next unless File.exist? volume_path
+	uuid = File.read(volume_path).strip
+	volumes[uuid] = target_path
+end
+
+# for each available target copy from source
+Dir.foreach(mount_path) do |dir|
+	next if dir == '.' or dir == '..'
+	source_path = File.join(mount_path, dir)
+	backup_path = File.join(source_path, ".backup")
+	next unless File.exist? backup_path
+	File.open(backup_path, 'r').each_line do |line|
+		id = line.strip
+		if target_path = volumes[id] then
+			backup source_path, target_path
+		end
+	end
+end
+
+exit 0
