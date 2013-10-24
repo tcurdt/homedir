@@ -71,6 +71,13 @@ if [ ! -f "$PROVISIONING_PROFILE" ]; then
 fi
 security cms -D -i $PROVISIONING_PROFILE > "$DIR/profile.plist"
 PROVISIONING_PROFILE_UUID="`$PLISTBUDDY -c "Print UUID" "$DIR/profile.plist"`"
+PROVISIONING_PROFILE_PATH="$HOME/Library/MobileDevice/Provisioning Profiles/${PROVISIONING_PROFILE_UUID}.mobileprovision"
+if [ -f "$PROVISIONING_PROFILE_PATH" ]; then
+  echo "Using provisioning profile $PROVISIONING_PROFILE_UUID"
+else
+  echo "Installing provisioning profile $PROVISIONING_PROFILE_UUID"
+  cp "$PROVISIONING_PROFILE" "$PROVISIONING_PROFILE_PATH"
+fi
 
 if [ "$PROJECT_TYPE" = "xcworkspace" ]; then
   echo "Building workspace $PROJECT_NAME"
@@ -161,7 +168,7 @@ for APP in "$DIR"/Applications/*.app; do
 
   # echo "Archiving dSYM"
 
-  echo "Creating ipa as $CODE_SIGN_IDENTITY with profile $PROVISIONING_PROFILE_UUID"
+  echo "Creating ipa as $CODE_SIGN_IDENTITY"
   xcrun -sdk $SDK PackageApplication \
     "$APP" \
     -o "$DIR/$APP_NAME.ipa" \
