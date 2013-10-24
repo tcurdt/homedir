@@ -8,10 +8,15 @@ def backup( source_path, target_path )
 	# --bwlimit=KBPS
 	# --delay-updates
 	# --delete --delete-after
+	# --extended-attributes
 	# --exclude-from="$VOLUME/.syncexclude" \
+	# --compress
+	# -n
 
 	cmd = %W(
-		rsync -n -q
+		rsync
+			--whole-file
+			--delete --delete-after
 			--recursive
 			--partial
 			--links
@@ -20,25 +25,28 @@ def backup( source_path, target_path )
 			--owner
 			--group
 			--times
-			--extended-attributes
 			--devices
 			--specials
 			--sparse
 			--one-file-system
-			--compress
 			--size-only
 			--one-file-system
 			--human-readable
 			--stats
+			--progress
 			--exclude=".backup"
 			--exclude=".volume"
 			--exclude=".Trashes"
 			--exclude=".Spotlight-V100"
 			--exclude=".fseventsd"
 			--exclude=".DS_Store"
+			--exclude="Desktop DB"
+			--exclude="Desktop DF"
 			--exclude="._*"
 			--exclude=".Spotlight-*/"
 			--exclude=".Trashes"
+			--exclude=".com.apple.timemachine.*"
+			--exclude=".TemporaryItems"
 			--exclude="/tmp/*"
 			--exclude="/Network/*"
 			--exclude="/cores/*"
