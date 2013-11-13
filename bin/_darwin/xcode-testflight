@@ -92,7 +92,8 @@ if [ "$PROJECT_TYPE" = "xcworkspace" ]; then
     PROVISIONING_PROFILE="$PROVISIONING_PROFILE_UUID" \
     DEPLOYMENT_LOCATION=YES \
     DWARF_DSYM_FOLDER_PATH="$DIR" \
-    2>&1 > "$DIR/build.log"
+    CRASHLYTICS=YES \
+    2>&1 | tee "$DIR/build.log" | grep "Running Crashlytics"
   if [ $? != 0 ]; then
     echo "Failed to build workspace. See build.log for details."
     exit 1
@@ -111,7 +112,8 @@ elif [ "$PROJECT_TYPE" = "xcodeproj" ]; then
     PROVISIONING_PROFILE="$PROVISIONING_PROFILE_UUID" \
     DEPLOYMENT_LOCATION=YES \
     DWARF_DSYM_FOLDER_PATH="$DIR" \
-    2>&1 > "$DIR/build.log"
+    CRASHLYTICS=YES \
+    2>&1 | tee "$DIR/build.log" | grep "Running Crashlytics"
   if [ $? != 0 ]; then
     echo "Failed to build workspace. See build.log for details."
     exit 1
