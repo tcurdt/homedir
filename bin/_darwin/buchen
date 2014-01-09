@@ -2,7 +2,6 @@
 require 'csv'
 require 'sqlite3'
 require 'digest'
-require 'iconv'
 
 $paths = {
   'db' => 'Buchungen %.4d %.2d.db',
@@ -35,6 +34,7 @@ if File.exists?(config_path)
   load config_path
   puts "db: #{$paths['db']}"
   puts "csv: #{$paths['csv']}"
+  puts "categories: #{$categories.count}"
   puts "matches: #{$matches.count}"
 end
 
@@ -50,10 +50,6 @@ class Database
     if !File.exists?(name)
       puts "creating db #{name}"
       sql = <<SQL
-      CREATE TABLE IF NOT EXISTS categories (
-        category TEXT PRIMARY KEY,
-        account INTEGER
-      );
       CREATE TABLE IF NOT EXISTS records (
         uniq TEXT PRIMARY KEY,
         source TEXT,
@@ -66,10 +62,6 @@ class Database
         category TEXT
       );
 SQL
-
-      $categories.each do |category, nr|
-        sql << "INSERT INTO \"categories\" VALUES ('#{category}', #{nr});\n"
-      end
     end
 
     @db = SQLite3::Database.new(name)
@@ -125,10 +117,7 @@ SQL
 
   def export(filename)
 
-    categories = {}
-    @db.execute('SELECT * FROM categories') do |row|
-      categories[row['category']] = row['account']
-    end
+    categories = $categories
 
     index = {}
 
@@ -138,7 +127,7 @@ SQL
         date = DateTime.parse(row['date']).strftime('%d.%m.%Y')
         value = row['value'].to_f
         currency = row['currency']
-        text = Iconv.conv('ASCII//IGNORE', 'UTF8', row['text'])
+        text = row['text'].encode("utf-8", "utf-8", :undef => :replace)
 
         if categories[row['category']] == 0
           next
@@ -224,7 +213,7 @@ class DkbGiro
         # 5 "Kontonummer";
         # 6 "BLZ";
         # 7 "Betrag (EUR)";
-        date = row[1]
+        date = row[0]
         day = date[0,2]
         month = date[3,2]
         year = date[6,4]
@@ -349,7 +338,7 @@ end
 
 def records(filenames)
   ARGV.each do |filename|
-    CSV.open(filename, 'r:iso-8859-1', :col_sep => ';') do |reader|
+    CSV.open(filename, 'r:iso-8859-1:utf-8', :col_sep => ';') do |reader|
       header = reader.readline
       case header[0]
       when /Kontonummer/
