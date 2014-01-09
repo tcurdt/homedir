@@ -41,9 +41,11 @@ DIR="`pwd`/build"
 rm -rf "$DIR"
 mkdir -p "$DIR"
 
-if [ "`git status | grep 'working directory clean'`" = "" ]; then
-  echo "There are local modifications. Please commit everything for a release."
-  exit 1
+if [ "$1" != "force" ]; then
+  if [ "`git status | grep 'working directory clean'`" = "" ]; then
+    echo "There are local modifications. Please commit everything for a release."
+    exit 1
+  fi
 fi
 
 API_TOKEN=`security find-internet-password -s testflightapp.com -a API_${USER} -g 2>&1 | grep password | sed 's/password: \"\(.*\)\"/\1/'`
@@ -93,7 +95,7 @@ if [ "$PROJECT_TYPE" = "xcworkspace" ]; then
     DEPLOYMENT_LOCATION=YES \
     DWARF_DSYM_FOLDER_PATH="$DIR" \
     CRASHLYTICS=YES \
-    2>&1 | tee "$DIR/build.log" | grep "Running Crashlytics"
+    2>&1 | tee "$DIR/build.log" | grep -i "Running Crashlytics"
   if [ $? != 0 ]; then
     echo "Failed to build workspace. See build.log for details."
     exit 1
@@ -113,7 +115,7 @@ elif [ "$PROJECT_TYPE" = "xcodeproj" ]; then
     DEPLOYMENT_LOCATION=YES \
     DWARF_DSYM_FOLDER_PATH="$DIR" \
     CRASHLYTICS=YES \
-    2>&1 | tee "$DIR/build.log" | grep "Running Crashlytics"
+    2>&1 | tee "$DIR/build.log" | grep -i "Running Crashlytics"
   if [ $? != 0 ]; then
     echo "Failed to build workspace. See build.log for details."
     exit 1
@@ -165,7 +167,8 @@ for APP in "$DIR"/Applications/*.app; do
   echo " version:  $APP_VERSION"
   echo " build:    $APP_BUILD"
   echo " revision: $APP_REVISION"
-  
+  dwarfdump -u "$DIR/${APP_NAME}.app.dSYM"
+
   zip -r --quiet "$DIR/${APP_NAME}.app.dSYM.zip" "$DIR/${APP_NAME}.app.dSYM"
 
   # echo "Archiving dSYM"
