@@ -57,8 +57,11 @@
     pp = !git pull --rebase && git push
     pf = pull --ff-only
     pr = pull --rebase
-    p  = push
+    ps = push
     pm = push origin master
+    up = "!git remote update -p; git merge --ff-only @{u}"
+
+    revert = git checkout HEAD^ --
 
     di = diff
     dc = diff --cached

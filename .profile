@@ -22,18 +22,18 @@ export HISTIGNORE="pwd:ls:cd:exit"
 export HISTCONTROL=ignoredups
 shopt -s histappend
 
-# rbenv
-if [[ -d $HOME/.rbenv/bin ]] ; then
-  export PATH="$HOME/.rbenv/bin:$PATH"
-  eval "$(rbenv init -)"
-  alias b='bundle exec'
-fi
+# # rbenv
+# if [[ -d $HOME/.rbenv/bin ]] ; then
+#   export PATH="$HOME/.rbenv/bin:$PATH"
+#   eval "$(rbenv init -)"
+#   alias b='bundle exec'
+# fi
 
-# rvm
-if [[ -s ~/.rvm/scripts/rvm ]] ; then
-  source ~/.rvm/scripts/rvm
-  rvm-prompt
-fi
+# # rvm
+# if [[ -s ~/.rvm/scripts/rvm ]] ; then
+#   source ~/.rvm/scripts/rvm
+#   rvm-prompt
+# fi
 
 # homedir
 export PATH=$PATH:~/bin:~/.homedir/bin

@@ -6,6 +6,9 @@
 .project
 .settings
 .testflight
+.awestruct
+.sass-cache
+.release
 target
 eclipse
 build

@@ -1,0 +1,18 @@
+#!/usr/bin/ruby
+
+IO.popen('pbpaste', 'r+') do |pb|
+	copy = true
+	pb.each_with_index do |line, idx|
+		if line.start_with?("@implementation")
+			puts line.gsub("@implementation", "@interface")
+		elsif line.start_with?("}")
+			copy = true
+		elsif line.start_with?("-")
+			print line.chomp
+			puts ";"
+			copy = false
+		else
+			puts line if copy
+		end
+	end
+end

@@ -16,22 +16,28 @@ export PATH=/usr/local/sbin:/usr/local/bin:/usr/local/Cellar:$PATH
 # node
 export PATH=$PATH:~/node_modules/.bin
 
-# java
-function setjdk {
-  local ver=${1?Usage: setjdk <version>}
-  export JAVA_HOME=$(/usr/libexec/java_home -v $ver)
-  PATH=$(echo $PATH | tr ':' '\n' | grep -v Java | tr '\n' ':')
-  export PATH=$JAVA_HOME/bin:$PATH
-}
+# chruby
+source '/usr/local/share/chruby/chruby.sh'
+source '/usr/local/share/chruby/auto.sh'
+chruby ruby-2.1.1
 
-function _setjdk_completion (){
-  COMPREPLY=()
-  local cur=${COMP_WORDS[COMP_CWORD]//\\\\/}
-  local options=$(/usr/libexec/java_home -x | plutil -convert json -r -o - - | grep JVMVersion | sed 's/[^:]*[^"]*"\([^"]*\).*/\1/')
-  COMPREPLY=($(compgen -W "${options}" ${cur}))
-}
-complete -F _setjdk_completion -o filenames setjdk
-setjdk 1.7.0_06
+# # java
+# function setjdk {
+#   local ver=${1?Usage: setjdk <version>}
+#   export JAVA_HOME=$(/usr/libexec/java_home -v $ver)
+#   PATH=$(echo $PATH | tr ':' '\n' | grep -v Java | tr '\n' ':')
+#   export PATH=$JAVA_HOME/bin:$PATH
+# }
+
+# function _setjdk_completion (){
+#   COMPREPLY=()
+#   local cur=${COMP_WORDS[COMP_CWORD]//\\\\/}
+#   local options=$(/usr/libexec/java_home -x | plutil -convert json -r -o - - | grep JVMVersion | sed 's/[^:]*[^"]*"\([^"]*\).*/\1/')
+#   COMPREPLY=($(compgen -W "${options}" ${cur}))
+# }
+# complete -F _setjdk_completion -o filenames setjdk
+# setjdk 1.7.0_06
+
 export M2_HOME=~/Library/Java/mvn
 export ANT_HOME=~/Library/Java/ant
 

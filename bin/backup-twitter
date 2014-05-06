@@ -20,11 +20,12 @@ filename = ARGV[1] || File.expand_path('~/Backup/twitter.tsv')
 
 dict = JSON.parse(IO.read(File.expand_path('~/.twitter.json')))
 
-Twitter.configure do |config|
-  config.consumer_key = dict["consumer_key"]
-  config.consumer_secret = dict["consumer_secret"]
-  config.oauth_token = dict["oauth_token"]
-  config.oauth_token_secret = dict["oauth_token_secret"]
+
+client = Twitter::REST::Client.new do |config|
+  config.consumer_key        = dict["consumer_key"]
+  config.consumer_secret     = dict["consumer_secret"]
+  config.access_token        = dict["oauth_token"]
+  config.access_token_secret = dict["oauth_token_secret"]
 end
 
 puts "writing to #{filename}"
@@ -32,7 +33,7 @@ puts "writing to #{filename}"
 tweets = 3200
 count = 200
 pages = tweets/count
-max_id = Twitter.user_timeline(userid, { :count => 1, :trim_user => true, :include_rts => true }).first.id
+max_id = client.user_timeline(userid, { :count => 1, :trim_user => true, :include_rts => true }).first.id
 since_id = since_id(filename) || 1
 
 options = { :count => count, :trim_user => true, :max_id => max_id, :include_rts => true }
@@ -42,7 +43,7 @@ tempfile = Tempfile.new('twitter')
 for page in 1..pages do
   puts "#{page} / #{pages}"
   options[:page] = page
-  tweets = Twitter.user_timeline(userid, options)
+  tweets = client.user_timeline(userid, options)
   if tweets.length > 0
     puts "from #{tweets.first.id} at #{tweets.first.created_at.strftime('%Y-%m-%d %T')}"
     tweets.each do |tweet|
