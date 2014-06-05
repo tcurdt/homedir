@@ -81,6 +81,7 @@ else
   cp "$PROVISIONING_PROFILE" "$PROVISIONING_PROFILE_PATH"
 fi
 
+# xcodebuild -configuration ${BUILD_TYPE} -target ${TARGET_NAME} -arch ${CPU_ARCHITECTURE} -sdk ${SIMULATOR_OR_IOS_SDK} 
 if [ "$PROJECT_TYPE" = "xcworkspace" ]; then
   echo "Building workspace $PROJECT_NAME"
   xcodebuild \
