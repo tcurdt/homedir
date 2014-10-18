@@ -5,10 +5,11 @@ export LESSOPEN='| lesspipe.sh %s'
 #export EDITOR='mvim -f -c "au VimLeave * !open -a Terminal"'
 export EDITOR='vim'
 
-# git
 # brew install bash-completion
-source /usr/local/etc/profile.d/bash_completion.sh
-source /usr/local/etc/bash_completion.d/git-completion.bash
+if [ -f $(brew --prefix)/etc/bash_completion ]; then
+  . $(brew --prefix)/etc/bash_completion
+fi
+# source /usr/local/etc/bash_completion.d/git-completion.bash
 
 # homebrew
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/local/Cellar:$PATH
@@ -17,9 +18,9 @@ export PATH=/usr/local/sbin:/usr/local/bin:/usr/local/Cellar:$PATH
 export PATH=$PATH:~/node_modules/.bin
 
 # chruby
-source '/usr/local/share/chruby/chruby.sh'
-source '/usr/local/share/chruby/auto.sh'
-chruby ruby-2.1.1
+source /usr/local/opt/chruby/share/chruby/chruby.sh
+source /usr/local/opt/chruby/share/chruby/auto.sh
+chruby ruby-2.1.2
 
 # java
 export JAVA_HOME=$(/usr/libexec/java_home -v 1.7)

@@ -50,7 +50,7 @@ echo "Building $NAME $VERSION ($REVISION)... this might take a while"
 
 set +e
 
-mvn clean install site source:jar javadoc:jar 2>&1 > output.log
+mvn clean install site source:jar javadoc:jar > output.log 2>&1
 
 if [[ $? -ne 0 ]]; then
     echo "FAILED. Please check the log at '`pwd`/output.log'."
